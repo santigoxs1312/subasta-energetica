@@ -369,12 +369,10 @@ if rol == "Portal Jugador":
       for (r, p_id), off in estado_global["ofertas"].items():
         if r == ronda_act and off["grupo"] == grupo_sel:
           icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
-          kwh_equivalent = off["precio_oferta"] / 1000.0
-          # RENDERIZADO EN MARKDOWN PURO PARA EVITAR ERRORES DE SINTAXIS/ETIQUETAS
+          # Formato de texto limpio sin comillas complejas ni conversión a kWh
           st.markdown(
               f"• **{icono} {off['nombre']}** ({off['fuente']}):"
-              f" **${off['precio_oferta']:,.0f} COP/MWh**"
-              f" (*${kwh_equivalent:,.1f} COP/kWh*) — Cap. Disp:"
+              f" **${off['precio_oferta']:,.0f} COP/MWh** — Cap. Disp:"
               f" **{off['cap_disp']:.0f} MW**"
           )
 
@@ -393,7 +391,7 @@ if rol == "Portal Jugador":
               f"""
               <div class="result-card">
                   <h3 style="color:#10B981; margin:0;">📊 Resultados de tu Equipo — {info_ronda['nombre']}</h3>
-                  <p style="margin:5px 0;"><b>Precio Marginal de Bolsa:</b> ${precio_m:,.2f} COP/MWh (${precio_m/1000:,.1f} COP/kWh)</p>
+                  <p style="margin:5px 0;"><b>Precio Marginal de Bolsa:</b> ${precio_m:,.2f} COP/MWh</p>
                   <hr style="border-color:#374151;">
                   <p>⚡ <b>Energía Despachada:</b> {mw_desp:,.0f} MW</p>
                   <p>💵 <b>Ingresos Totales:</b> ${ingresos:,.2f} COP</p>
@@ -406,8 +404,7 @@ if rol == "Portal Jugador":
     else:
       plantas_equipo = estado_global["asignacion"].get(grupo_sel, [])
       st.info(
-          "📍 Ingresa la tarifa por MWh para tus 3 generadoras. (Ejemplo:"
-          " $400,000 COP/MWh equivale a $400 COP/kWh)."
+          "📍 Ingresa el precio de oferta en COP/MWh para tus 3 generadoras."
       )
 
       ofertas_temp = {}
@@ -430,14 +427,13 @@ if rol == "Portal Jugador":
         cap_disp = p["cap_nom"] * disp_pct
         icono = ICONOS_FUENTE.get(p["fuente"], "⚡")
         estilo = COLOR_TIPO[p["tipo"]]
-        costo_kwh = p["costo"] / 1000.0
 
         st.markdown(
             f"""
             <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
                 <h4 style="margin:0; color: #FFFFFF;">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
                 <p style="margin:4px 0 0 0; color: #E5E7EB; font-size:0.95em;">
-                    Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b> (${costo_kwh:,.1f} COP/kWh)
+                    Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b>
                 </p>
             </div>
             """,
@@ -626,11 +622,9 @@ elif rol == "Panel Administrador":
           estado_global["resultados"][ronda_proc] = resumen
           estado_global["precios_marginales"][ronda_proc] = precio_marginal
 
-          precio_kwh = precio_marginal / 1000.0
           st.markdown(
               "### 💰 Precio Marginal de Bolsa:"
-              f" **${precio_marginal:,.2f} COP/MWh** (${precio_kwh:,.1f}"
-              " COP/kWh)"
+              f" **${precio_marginal:,.2f} COP/MWh**"
           )
 
           # CURVA DE MÉRITO (PLOTLY)
@@ -684,7 +678,7 @@ elif rol == "Panel Administrador":
               y=precio_marginal,
               line_dash="dot",
               line_color="#F59E0B",
-              annotation_text=f"Precio Bolsa ${precio_marginal:,.0f}",
+              annotation_text=f"Precio Bolsa ${precio_marginal:,.0f} COP/MWh",
           )
 
           fig.update_layout(
