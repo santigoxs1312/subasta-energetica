@@ -49,6 +49,13 @@ st.markdown("""
         text-align: center;
         margin-bottom: 25px;
     }
+    .status-card {
+        background-color: #111827;
+        border: 1px solid #374151;
+        padding: 10px 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -194,10 +201,11 @@ if rol == "Portal Jugador":
             for (r, p_id), off in estado_global["ofertas"].items():
                 if r == ronda_act and off["grupo"] == grupo_sel:
                     icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
-                    st.write(f"• **{icono} {off['nombre']}** ({off['fuente']}): **${off['precio_oferta']:,.0f} COP/MWh** — Capacidad Disp.: {off['cap_disp']:.0f} MW")
+                    kwh_equivalent = off['precio_oferta'] / 1000.0
+                    st.write(f"• **{icono} {off['nombre']}** ({off['fuente']}): **${off['precio_oferta']:,.0f} COP/MWh** (${kwh_equivalent:,.1f} COP/kWh) — Cap. Disp: {off['cap_disp']:.0f} MW")
         else:
             plantas_equipo = estado_global["asignacion"].get(grupo_sel, [])
-            st.info(f"📍 Ingresa la tarifa por MWh para tus 3 generadoras.")
+            st.info(f"📍 Ingresa la tarifa por MWh para tus 3 generadoras. (Nota: $400,000 COP/MWh equivale a $400 COP/kWh en tu factura).")
             
             ofertas_temp = {}
             
@@ -211,13 +219,14 @@ if rol == "Portal Jugador":
                 cap_disp = p["cap_nom"] * disp_pct
                 icono = ICONOS_FUENTE.get(p["fuente"], "⚡")
                 estilo = COLOR_TIPO[p["tipo"]]
+                costo_kwh = p["costo"] / 1000.0
                 
                 st.markdown(
                     f"""
                     <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
                         <h4 style="margin:0; color: #FFFFFF;">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
                         <p style="margin:4px 0 0 0; color: #E5E7EB; font-size:0.95em;">
-                            Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b>
+                            Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b> (${costo_kwh:,.1f} COP/kWh)
                         </p>
                     </div>
                     """,
@@ -266,6 +275,10 @@ elif rol == "Panel Administrador":
     else:
         st.success("🔓 Sesión de Administrador Activa.")
         
+        # BOTÓN DE REFRESCAR OFERTAS
+        if st.button("🔄 Refrescar Ofertas Recibidas en Tiempo Real"):
+            st.rerun()
+            
         st.markdown("### 🎛️ Control de Ronda Activa para los Estudiantes")
         ronda_sel = st.radio(
             "Selecciona qué Ronda habilitar en la pantalla de los estudiantes:",
@@ -304,12 +317,25 @@ elif rol == "Panel Administrador":
         info_proc = INFO_RONDAS[ronda_proc]
         demanda = info_proc["demanda"]
         
-        st.markdown(f"### 📊 Procesamiento de Resultados — **{info_proc['nombre']}**")
+        st.markdown(f"### 📊 Estado de Recepción y Despacho — **{info_proc['nombre']}**")
         
-        grupos_listos = len([g for g in ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"] if estado_global["bloqueados"].get((ronda_proc, g), False)])
+        # TABLERO DE ESTADO EN TIEMPO REAL POR EQUIPO
+        grupos = ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"]
+        cols_status = st.columns(5)
+        grupos_listos = 0
+        
+        for idx, g in enumerate(grupos):
+            listo = estado_global["bloqueados"].get((ronda_proc, g), False)
+            if listo:
+                grupos_listos += 1
+                cols_status[idx].markdown(f"**{g}**<br>✅ <span style='color:#10B981;'>Listo</span>", unsafe_allow_html=True)
+            else:
+                cols_status[idx].markdown(f"**{g}**<br>⏳ <span style='color:#EF4444;'>Esperando</span>", unsafe_allow_html=True)
+        
+        st.write("")
         ofertas_ronda = {k[1]: v for k, v in estado_global["ofertas"].items() if k[0] == ronda_proc}
         
-        st.metric(label="Progreso de Recepción", value=f"{grupos_listos} / 5 Equipos Listos", delta=f"{len(ofertas_ronda)} / 15 Plantas Ofertadas")
+        st.metric(label="Progreso Total de Ofertas", value=f"{grupos_listos} / 5 Equipos Listos", delta=f"{len(ofertas_ronda)} / 15 Plantas Recibidas")
         
         if st.button(f"🚀 Ejecutar Despacho Económico - Ronda {ronda_proc}"):
             if len(ofertas_ronda) == 0:
@@ -338,7 +364,6 @@ elif rol == "Panel Administrador":
                 df["costo_total"] = df["despachado_mw"] * df["costo"]
                 df["utilidad"] = df["ingreso"] - df["costo_total"]
                 
-                # Guardar resultado para el podio final
                 resumen = df.groupby("grupo").agg(
                     MW_Despachados=("despachado_mw", "sum"),
                     Ingresos=("ingreso", "sum"),
@@ -347,7 +372,8 @@ elif rol == "Panel Administrador":
                 
                 estado_global["resultados"][ronda_proc] = resumen
                 
-                st.markdown(f"### 💰 Precio Marginal de Bolsa: **${precio_marginal:,.2f} COP/MWh**")
+                precio_kwh = precio_marginal / 1000.0
+                st.markdown(f"### 💰 Precio Marginal de Bolsa: **${precio_marginal:,.2f} COP/MWh** (${precio_kwh:,.1f} COP/kWh)")
                 
                 fig = go.Figure()
                 
