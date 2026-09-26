@@ -1,0 +1,436 @@
+import streamlit as st
+import pandas as pd
+import plotly.graph_objects as go
+import random
+
+# ---------------------------------------------------------
+# CONFIGURACIÓN GENERAL Y ESTILO
+# ---------------------------------------------------------
+st.set_page_config(
+    page_title="Subasta Energética - ICESI", 
+    page_icon="⚡", 
+    layout="wide"
+)
+
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+    }
+    .main-header {
+        font-size:2.2rem;
+        color:#38BDF8;
+        text-align:center;
+        font-weight:bold;
+        margin-bottom:5px;
+    }
+    .sub-header {
+        font-size:1.05rem;
+        color:#9CA3AF;
+        text-align:center;
+        margin-bottom:20px;
+    }
+    .round-badge {
+        background-color: #1E293B;
+        border: 1px solid #38BDF8;
+        color: #38BDF8;
+        padding: 12px 18px;
+        border-radius: 12px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 20px;
+    }
+    .winner-card {
+        background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
+        border: 2px solid #F59E0B;
+        padding: 20px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 25px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# ---------------------------------------------------------
+# ESTADO GLOBAL DE LA APLICACIÓN (MEMORIA DE SERVIDOR)
+# ---------------------------------------------------------
+@st.cache_resource
+def obtener_estado_global():
+    return {
+        "asignacion": {},
+        "ronda_actual": 1,
+        "ofertas": {},        # Dict con llaves (ronda, planta_id)
+        "bloqueados": {},      # Dict con llaves (ronda, grupo)
+        "resultados": {}       # Guarda los DataFrames resúmenes por ronda
+    }
+
+estado_global = obtener_estado_global()
+
+# ---------------------------------------------------------
+# BASE DE DATOS Y CONFIGURACIÓN DE PLANTAS
+# ---------------------------------------------------------
+PLANTAS_SISTEMA = [
+    # FNCER / Renovables No Convencionales (5)
+    {"id": "G1", "nombre": "Sol Radiante 1", "fuente": "Solar", "tipo": "FNCER", "cap_nom": 80, "costo": 40000},
+    {"id": "G2", "nombre": "Sol Radiante 2", "fuente": "Solar", "tipo": "FNCER", "cap_nom": 80, "costo": 40000},
+    {"id": "G3", "nombre": "HeliOS 3", "fuente": "Solar", "tipo": "FNCER", "cap_nom": 100, "costo": 50000},
+    {"id": "G4", "nombre": "Vientos del Norte 1", "fuente": "Eólica", "tipo": "FNCER", "cap_nom": 120, "costo": 60000},
+    {"id": "G5", "nombre": "Vientos del Norte 2", "fuente": "Eólica", "tipo": "FNCER", "cap_nom": 120, "costo": 60000},
+    
+    # Renovables Convencionales (5)
+    {"id": "G6", "nombre": "Río Vivo 1", "fuente": "Hidro Filo", "tipo": "Convencional", "cap_nom": 100, "costo": 80000},
+    {"id": "G7", "nombre": "Río Vivo 2", "fuente": "Hidro Filo", "tipo": "Convencional", "cap_nom": 100, "costo": 80000},
+    {"id": "G8", "nombre": "Embalse Central 1", "fuente": "Hidro Embalse", "tipo": "Convencional", "cap_nom": 150, "costo": 120000},
+    {"id": "G9", "nombre": "Embalse Central 2", "fuente": "Hidro Embalse", "tipo": "Convencional", "cap_nom": 150, "costo": 140000},
+    {"id": "G10", "nombre": "Embalse El Salto", "fuente": "Hidro Embalse", "tipo": "Convencional", "cap_nom": 200, "costo": 160000},
+    
+    # Térmicas / No Renovables (5)
+    {"id": "G11", "nombre": "Térmica Carbón A", "fuente": "Carbón", "tipo": "Térmica", "cap_nom": 150, "costo": 280000},
+    {"id": "G12", "nombre": "Térmica Carbón B", "fuente": "Carbón", "tipo": "Térmica", "cap_nom": 150, "costo": 300000},
+    {"id": "G13", "nombre": "TermoGas 1", "fuente": "Gas", "tipo": "Térmica", "cap_nom": 200, "costo": 380000},
+    {"id": "G14", "nombre": "TermoGas 2", "fuente": "Gas", "tipo": "Térmica", "cap_nom": 200, "costo": 420000},
+    {"id": "G15", "nombre": "TermoDiésel Pico", "fuente": "Diésel", "tipo": "Térmica", "cap_nom": 150, "costo": 600000},
+]
+
+ICONOS_FUENTE = {
+    "Solar": "☀️", "Eólica": "🌬️", "Hidro Filo": "💧", 
+    "Hidro Embalse": "🌊", "Carbón": "⛏️", "Gas": "🔥", "Diésel": "⛽"
+}
+
+COLOR_TIPO = {
+    "FNCER": {"bg": "#064e3b", "border": "#10B981", "badge": "Renovable No Convencional"},
+    "Convencional": {"bg": "#1e3a8a", "border": "#3B82F6", "badge": "Renovable Convencional"},
+    "Térmica": {"bg": "#7f1d1d", "border": "#EF4444", "badge": "No Renovable / Térmica"}
+}
+
+INFO_RONDAS = {
+    1: {
+        "nombre": "Ronda 1: Hidrología Alta / Soleado",
+        "demanda": 1000,
+        "descripcion": "Condiciones climáticas óptimas. 100% de disponibilidad solar, eólica e hídrica. Demanda total del sistema: 1,000 MW."
+    },
+    2: {
+        "nombre": "Ronda 2: El Niño / Noche",
+        "demanda": 1100,
+        "descripcion": "Periodo de sequía severa y noche. Solar: 0%, Eólica: 40%, Hidro Filo: 25%, Embalses: 50%. Demanda pico: 1,100 MW."
+    }
+}
+
+def realizar_sorteo():
+    fncer = [p for p in PLANTAS_SISTEMA if p["tipo"] == "FNCER"]
+    conv = [p for p in PLANTAS_SISTEMA if p["tipo"] == "Convencional"]
+    term = [p for p in PLANTAS_SISTEMA if p["tipo"] == "Térmica"]
+    
+    random.shuffle(fncer)
+    random.shuffle(conv)
+    random.shuffle(term)
+    
+    asignacion = {}
+    grupos = ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"]
+    
+    for i, g in enumerate(grupos):
+        asignacion[g] = [fncer[i], conv[i], term[i]]
+    
+    estado_global["asignacion"] = asignacion
+    estado_global["ofertas"] = {}
+    estado_global["bloqueados"] = {}
+    estado_global["resultados"] = {}
+
+if not estado_global["asignacion"]:
+    realizar_sorteo()
+
+# ---------------------------------------------------------
+# ENCABEZADO
+# ---------------------------------------------------------
+st.markdown('<div class="main-header">⚡ Subasta Energética - ICESI INNTERACTIVA 2026-2</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Mercado de Energía Mayorista | Determinación del Precio Marginal de Bolsa</div>', unsafe_allow_html=True)
+
+st.sidebar.title("Navegación")
+rol = st.sidebar.radio("Modo de Acceso:", ["Portal Jugador", "Panel Administrador"])
+
+# ---------------------------------------------------------
+# PORTAL JUGADOR
+# ---------------------------------------------------------
+if rol == "Portal Jugador":
+    
+    if st.sidebar.button("🔄 Actualizar Estado del Mercado"):
+        st.rerun()
+        
+    if "mi_grupo" not in st.session_state:
+        st.subheader("👥 Selección Inicial de Equipo")
+        st.info("👋 Bienvenida/o. Selecciona a qué equipo perteneces.")
+        
+        grupo_elegido = st.selectbox("Selecciona tu Equipo:", ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"])
+        if st.button("✅ Confirmar e Ingresar como " + grupo_elegido):
+            st.session_state["mi_grupo"] = grupo_elegido
+            st.rerun()
+    else:
+        grupo_sel = st.session_state["mi_grupo"]
+        ronda_act = estado_global["ronda_actual"]
+        info_ronda = INFO_RONDAS[ronda_act]
+        
+        c_head1, c_head2 = st.columns([3, 1])
+        with c_head1:
+            st.subheader(f"👥 Portal de Ofertas — **{grupo_sel}**")
+        with c_head2:
+            st.caption(f"🔒 Equipo fijado: **{grupo_sel}**")
+        
+        st.markdown(
+            f"""
+            <div class="round-badge">
+                📢 <b>ESCENARIO ACTIVO: {info_ronda['nombre'].upper()}</b><br>
+                <span style="font-size:0.9em; font-weight:normal; color:#D1D5DB;">{info_ronda['descripcion']}</span>
+            </div>
+            """, 
+            unsafe_allow_html=True
+        )
+        
+        esta_bloqueado = estado_global["bloqueados"].get((ronda_act, grupo_sel), False)
+        
+        if esta_bloqueado:
+            st.error(f"🔒 **{grupo_sel}**: Las ofertas de tu equipo para la **{info_ronda['nombre']}** ya fueron registradas exitosamente. Espera a que el docente procese los resultados.")
+            st.markdown("### 📋 Resumen de Ofertas Enviadas para esta Ronda:")
+            for (r, p_id), off in estado_global["ofertas"].items():
+                if r == ronda_act and off["grupo"] == grupo_sel:
+                    icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
+                    st.write(f"• **{icono} {off['nombre']}** ({off['fuente']}): **${off['precio_oferta']:,.0f} COP/MWh** — Capacidad Disp.: {off['cap_disp']:.0f} MW")
+        else:
+            plantas_equipo = estado_global["asignacion"].get(grupo_sel, [])
+            st.info(f"📍 Ingresa la tarifa por MWh para tus 3 generadoras.")
+            
+            ofertas_temp = {}
+            
+            for p in plantas_equipo:
+                if ronda_act == 1:
+                    disp_pct = 1.0
+                else:
+                    disp_map = {"Solar": 0.0, "Eólica": 0.4, "Hidro Filo": 0.25, "Hidro Embalse": 0.5, "Carbón": 1.0, "Gas": 1.0, "Diésel": 1.0}
+                    disp_pct = disp_map.get(p["fuente"], 1.0)
+                
+                cap_disp = p["cap_nom"] * disp_pct
+                icono = ICONOS_FUENTE.get(p["fuente"], "⚡")
+                estilo = COLOR_TIPO[p["tipo"]]
+                
+                st.markdown(
+                    f"""
+                    <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                        <h4 style="margin:0; color: #FFFFFF;">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
+                        <p style="margin:4px 0 0 0; color: #E5E7EB; font-size:0.95em;">
+                            Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b>
+                        </p>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                
+                precio = st.number_input(
+                    f"Precio de Oferta para {p['nombre']} (COP/MWh)", 
+                    min_value=0.0, 
+                    max_value=2000000.0,
+                    value=float(p["costo"]), 
+                    step=5000.0,
+                    key=f"inp_{grupo_sel}_r{ronda_act}_{p['id']}"
+                )
+                
+                ofertas_temp[(ronda_act, p["id"])] = {
+                    "nombre": p["nombre"],
+                    "fuente": p["fuente"],
+                    "grupo": grupo_sel,
+                    "cap_disp": cap_disp,
+                    "costo": p["costo"],
+                    "precio_oferta": precio
+                }
+                st.write("")
+                
+            st.divider()
+            
+            if st.button(f"📤 Registrar y Bloquear Ofertas del {grupo_sel} (Ronda {ronda_act})"):
+                estado_global["ofertas"].update(ofertas_temp)
+                estado_global["bloqueados"][(ronda_act, grupo_sel)] = True
+                st.success(f"✅ ¡Ofertas del {grupo_sel} enviadas exitosamente!")
+                st.rerun()
+
+# ---------------------------------------------------------
+# PANEL ADMINISTRADOR
+# ---------------------------------------------------------
+elif rol == "Panel Administrador":
+    st.subheader("🔒 Control Central del Mercado")
+    
+    password = st.text_input("Ingresa la contraseña de administrador:", type="password")
+    
+    if password != "subasta2026":
+        if password != "":
+            st.error("❌ Contraseña incorrecta.")
+        st.warning("⚠️ Debes ingresar la clave para acceder al panel de control.")
+    else:
+        st.success("🔓 Sesión de Administrador Activa.")
+        
+        st.markdown("### 🎛️ Control de Ronda Activa para los Estudiantes")
+        ronda_sel = st.radio(
+            "Selecciona qué Ronda habilitar en la pantalla de los estudiantes:",
+            options=[1, 2],
+            format_func=lambda x: INFO_RONDAS[x]["nombre"],
+            index=estado_global["ronda_actual"] - 1,
+            horizontal=True
+        )
+        
+        if ronda_sel != estado_global["ronda_actual"]:
+            estado_global["ronda_actual"] = ronda_sel
+            st.success(f"¡Ronda de estudiantes actualizada a: **{INFO_RONDAS[ronda_sel]['nombre']}**!")
+            st.rerun()
+            
+        st.divider()
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🎲 Re-Sortear Plantas a los Grupos"):
+                realizar_sorteo()
+                st.success("¡Plantas reasignadas aleatoriamente!")
+                st.rerun()
+        with c2:
+            if st.button(f"🗑️ Reiniciar Ofertas de Ronda {estado_global['ronda_actual']}"):
+                r_curr = estado_global['ronda_actual']
+                estado_global["ofertas"] = {k: v for k, v in estado_global["ofertas"].items() if k[0] != r_curr}
+                estado_global["bloqueados"] = {k: v for k, v in estado_global["bloqueados"].items() if k[0] != r_curr}
+                if r_curr in estado_global["resultados"]:
+                    del estado_global["resultados"][r_curr]
+                st.success(f"¡Ofertas de la Ronda {r_curr} reseteadas!")
+                st.rerun()
+                
+        st.divider()
+        
+        ronda_proc = estado_global["ronda_actual"]
+        info_proc = INFO_RONDAS[ronda_proc]
+        demanda = info_proc["demanda"]
+        
+        st.markdown(f"### 📊 Procesamiento de Resultados — **{info_proc['nombre']}**")
+        
+        grupos_listos = len([g for g in ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"] if estado_global["bloqueados"].get((ronda_proc, g), False)])
+        ofertas_ronda = {k[1]: v for k, v in estado_global["ofertas"].items() if k[0] == ronda_proc}
+        
+        st.metric(label="Progreso de Recepción", value=f"{grupos_listos} / 5 Equipos Listos", delta=f"{len(ofertas_ronda)} / 15 Plantas Ofertadas")
+        
+        if st.button(f"🚀 Ejecutar Despacho Económico - Ronda {ronda_proc}"):
+            if len(ofertas_ronda) == 0:
+                st.warning("No hay ofertas registradas aún para esta ronda.")
+            else:
+                df = pd.DataFrame.from_dict(ofertas_ronda, orient="index")
+                df = df[df["cap_disp"] > 0].copy()
+                df = df.sort_values(by="precio_oferta").reset_index(drop=True)
+                
+                df["mw_acumulados"] = df["cap_disp"].cumsum()
+                df["mw_previos"] = df["mw_acumulados"] - df["cap_disp"]
+                
+                df["despachado_mw"] = 0.0
+                precio_marginal = 0.0
+                
+                for idx, row in df.iterrows():
+                    if row["mw_previos"] < demanda:
+                        mw_necesarios = demanda - row["mw_previos"]
+                        mw_efectivos = min(row["cap_disp"], mw_necesarios)
+                        df.at[idx, "despachado_mw"] = mw_efectivos
+                        precio_marginal = row["precio_oferta"]
+                    else:
+                        df.at[idx, "despachado_mw"] = 0.0
+
+                df["ingreso"] = df["despachado_mw"] * precio_marginal
+                df["costo_total"] = df["despachado_mw"] * df["costo"]
+                df["utilidad"] = df["ingreso"] - df["costo_total"]
+                
+                # Guardar resultado para el podio final
+                resumen = df.groupby("grupo").agg(
+                    MW_Despachados=("despachado_mw", "sum"),
+                    Ingresos=("ingreso", "sum"),
+                    Utilidad_Neta=("utilidad", "sum")
+                ).reset_index()
+                
+                estado_global["resultados"][ronda_proc] = resumen
+                
+                st.markdown(f"### 💰 Precio Marginal de Bolsa: **${precio_marginal:,.2f} COP/MWh**")
+                
+                fig = go.Figure()
+                
+                for idx, row in df.iterrows():
+                    color = "#10B981" if row["despachado_mw"] > 0 else "#EF4444"
+                    icono = ICONOS_FUENTE.get(row["fuente"], "⚡")
+                    fig.add_trace(go.Scatter(
+                        x=[row["mw_previos"], row["mw_acumulados"], row["mw_acumulados"], row["mw_previos"]],
+                        y=[0, 0, row["precio_oferta"], row["precio_oferta"]],
+                        fill="toself",
+                        fillcolor=color,
+                        opacity=0.6,
+                        line=dict(color=color, width=2),
+                        name=f"{row['nombre']}",
+                        text=f"{icono} {row['nombre']} ({row['grupo']})<br>Oferta: ${row['precio_oferta']:,.0f} COP/MWh<br>Despachado: {row['despachado_mw']} MW",
+                        hoverinfo="text"
+                    ))
+                
+                fig.add_vline(x=demanda, line_dash="dash", line_color="#38BDF8", annotation_text=f"Demanda {demanda} MW")
+                fig.add_hline(y=precio_marginal, line_dash="dot", line_color="#F59E0B", annotation_text=f"Precio Bolsa ${precio_marginal:,.0f}")
+                
+                fig.update_layout(
+                    title=f"Curva de Mérito — {info_proc['nombre']}",
+                    xaxis_title="Potencia Acumulada (MW)",
+                    yaxis_title="Precio Ofertado (COP/MWh)",
+                    paper_bgcolor="#000000",
+                    plot_bgcolor="#111827",
+                    font=dict(color="#FFFFFF"),
+                    showlegend=False,
+                    height=480
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                
+                st.subheader("🏆 Resultados Financieros de la Ronda Actual")
+                st.dataframe(
+                    resumen.sort_values(by="Utilidad_Neta", ascending=False).style.format({
+                        "MW_Despachados": "{:,.0f} MW",
+                        "Ingresos": "${:,.2f}",
+                        "Utilidad_Neta": "${:,.2f}"
+                    }), 
+                    hide_index=True, 
+                    use_container_width=True
+                )
+
+        # ---------------------------------------------------------
+        # PANTALLA DE PREMIACIÓN GLOBAL / GRAN GANADOR
+        # ---------------------------------------------------------
+        st.divider()
+        st.markdown("## 🏆 Tabla de Posiciones Final (Acumulado Rondas 1 y 2)")
+        
+        if 1 in estado_global["resultados"] and 2 in estado_global["resultados"]:
+            df_r1 = estado_global["resultados"][1]
+            df_r2 = estado_global["resultados"][2]
+            
+            df_total = pd.merge(df_r1, df_r2, on="grupo", suffixes=("_R1", "_R2"))
+            df_total["MW_Totales"] = df_total["MW_Despachados_R1"] + df_total["MW_Despachados_R2"]
+            df_total["Ingresos_Totales"] = df_total["Ingresos_R1"] + df_total["Ingresos_R2"]
+            df_total["Utilidad_Acumulada"] = df_total["Utilidad_Neta_R1"] + df_total["Utilidad_Neta_R2"]
+            
+            df_total = df_total.sort_values(by="Utilidad_Acumulada", ascending=False).reset_index(drop=True)
+            
+            ganador = df_total.iloc[0]
+            
+            st.balloons()
+            st.markdown(
+                f"""
+                <div class="winner-card">
+                    <h1 style="color: #F59E0B; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
+                    <h2 style="color: #FFFFFF; margin: 10px 0;">{ganador['grupo']}</h2>
+                    <h3 style="color: #10B981; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+            
+            st.dataframe(
+                df_total[["grupo", "MW_Totales", "Ingresos_Totales", "Utilidad_Acumulada"]].style.format({
+                    "MW_Totales": "{:,.0f} MW",
+                    "Ingresos_Totales": "${:,.2f}",
+                    "Utilidad_Acumulada": "${:,.2f}"
+                }),
+                hide_index=True,
+                use_container_width=True
+            )
+        else:
+            st.info("💡 Para calcular y mostrar la pantalla del Ganador Global, debes haber ejecutado el despacho económico tanto de la Ronda 1 como de la Ronda 2.")
