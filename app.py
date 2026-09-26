@@ -332,10 +332,6 @@ if rol == "Portal Jugador":
   else:
     grupo_sel = st.session_state["mi_grupo"]
 
-    if st.sidebar.button(f"🚪 Cambiar de Equipo (Actual: {grupo_sel})"):
-      del st.session_state["mi_grupo"]
-      st.rerun()
-
     ronda_act = estado_global["ronda_actual"]
     info_ronda = INFO_RONDAS[ronda_act]
 
@@ -343,15 +339,15 @@ if rol == "Portal Jugador":
     with c_head1:
       st.subheader(f"👥 Portal de Ofertas — {grupo_sel}")
     with c_head2:
-      st.caption(f"🔒 Equipo fijado: **{grupo_sel}**")
+      st.caption(f"🔒 Equipo activo: **{grupo_sel}**")
 
     st.markdown(
         f"""
-            <div class="round-badge">
-                📢 <b>ESCENARIO ACTIVO: {info_ronda['nombre'].upper()}</b><br>
-                <span style="font-size:0.9em; font-weight:normal; color:#D1D5DB;">{info_ronda['descripcion']}</span>
-            </div>
-            """,
+        <div class="round-badge">
+            📢 <b>ESCENARIO ACTIVO: {info_ronda['nombre'].upper()}</b><br>
+            <span style="font-size:0.9em; font-weight:normal; color:#D1D5DB;">{info_ronda['descripcion']}</span>
+        </div>
+        """,
         unsafe_allow_html=True,
     )
 
@@ -362,10 +358,10 @@ if rol == "Portal Jugador":
     if esta_bloqueado:
       st.markdown(
           f"""
-                <div class="locked-card">
-                    <b>🔒 Ofertas Registradas:</b> Las ofertas del <b>{grupo_sel}</b> para la <b>{info_ronda['nombre']}</b> ya fueron enviadas al servidor. Por favor espera a que el docente ejecute el despacho económico.
-                </div>
-                """,
+          <div class="locked-card">
+              <b>🔒 Ofertas Registradas:</b> Las ofertas del <b>{grupo_sel}</b> para la <b>{info_ronda['nombre']}</b> ya fueron enviadas al servidor. Por favor espera a que el docente ejecute el despacho económico.
+          </div>
+          """,
           unsafe_allow_html=True,
       )
 
@@ -374,12 +370,12 @@ if rol == "Portal Jugador":
         if r == ronda_act and off["grupo"] == grupo_sel:
           icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
           kwh_equivalent = off["precio_oferta"] / 1000.0
+          # RENDERIZADO EN MARKDOWN PURO PARA EVITAR ERRORES DE SINTAXIS/ETIQUETAS
           st.markdown(
-              f"• **{icono} {off['nombre']}** ({off['fuente']}): "
-              f"<b>${off['precio_oferta']:,.0f} COP/MWh</b> "
-              f"<i>(${kwh_equivalent:,.1f} COP/kWh)</i> — Cap. Disp:"
-              f" <b>{off['cap_disp']:.0f} MW</b>",
-              unsafe_allow_html=True,
+              f"• **{icono} {off['nombre']}** ({off['fuente']}):"
+              f" **${off['precio_oferta']:,.0f} COP/MWh**"
+              f" (*${kwh_equivalent:,.1f} COP/kWh*) — Cap. Disp:"
+              f" **{off['cap_disp']:.0f} MW**"
           )
 
       # MOSTRAR RESULTADOS SI EL DOCENTE YA EJECUTÓ EL DESPACHO
@@ -395,15 +391,15 @@ if rol == "Portal Jugador":
 
           st.markdown(
               f"""
-                    <div class="result-card">
-                        <h3 style="color:#10B981; margin:0;">📊 Resultados de tu Equipo — {info_ronda['nombre']}</h3>
-                        <p style="margin:5px 0;"><b>Precio Marginal de Bolsa:</b> ${precio_m:,.2f} COP/MWh (${precio_m/1000:,.1f} COP/kWh)</p>
-                        <hr style="border-color:#374151;">
-                        <p>⚡ <b>Energía Despachada:</b> {mw_desp:,.0f} MW</p>
-                        <p>💵 <b>Ingresos Totales:</b> ${ingresos:,.2f} COP</p>
-                        <p>📈 <b>Utilidad Neta Obtenida:</b> <span style="font-size:1.2em; color:#F59E0B; font-weight:bold;">${utilidad:,.2f} COP</span></p>
-                    </div>
-                    """,
+              <div class="result-card">
+                  <h3 style="color:#10B981; margin:0;">📊 Resultados de tu Equipo — {info_ronda['nombre']}</h3>
+                  <p style="margin:5px 0;"><b>Precio Marginal de Bolsa:</b> ${precio_m:,.2f} COP/MWh (${precio_m/1000:,.1f} COP/kWh)</p>
+                  <hr style="border-color:#374151;">
+                  <p>⚡ <b>Energía Despachada:</b> {mw_desp:,.0f} MW</p>
+                  <p>💵 <b>Ingresos Totales:</b> ${ingresos:,.2f} COP</p>
+                  <p>📈 <b>Utilidad Neta Obtenida:</b> <span style="font-size:1.2em; color:#F59E0B; font-weight:bold;">${utilidad:,.2f} COP</span></p>
+              </div>
+              """,
               unsafe_allow_html=True,
           )
 
@@ -438,13 +434,13 @@ if rol == "Portal Jugador":
 
         st.markdown(
             f"""
-                    <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
-                        <h4 style="margin:0; color: #FFFFFF;">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
-                        <p style="margin:4px 0 0 0; color: #E5E7EB; font-size:0.95em;">
-                            Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b> (${costo_kwh:,.1f} COP/kWh)
-                        </p>
-                    </div>
-                    """,
+            <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                <h4 style="margin:0; color: #FFFFFF;">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
+                <p style="margin:4px 0 0 0; color: #E5E7EB; font-size:0.95em;">
+                    Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b> (${costo_kwh:,.1f} COP/kWh)
+                </p>
+            </div>
+            """,
             unsafe_allow_html=True,
         )
 
@@ -545,15 +541,9 @@ elif rol == "Panel Administrador":
       listo = estado_global["bloqueados"].get((ronda_proc, g), False)
       if listo:
         grupos_listos += 1
-        cols_status[idx].markdown(
-            f"**{g}**<br>✅ <span style='color:#10B981;'>Listo</span>",
-            unsafe_allow_html=True,
-        )
+        cols_status[idx].markdown(f"**{g}**\n\n✅ Listo")
       else:
-        cols_status[idx].markdown(
-            f"**{g}**<br>⏳ <span style='color:#EF4444;'>Esperando</span>",
-            unsafe_allow_html=True,
-        )
+        cols_status[idx].markdown(f"**{g}**\n\n⏳ Esperando")
 
     st.write("")
     ofertas_ronda = {
@@ -766,12 +756,12 @@ elif rol == "Panel Administrador":
       st.balloons()
       st.markdown(
           f"""
-                <div class="winner-card">
-                    <h1 style="color: #F59E0B; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
-                    <h2 style="color: #FFFFFF; margin: 10px 0;">{ganador['grupo']}</h2>
-                    <h3 style="color: #10B981; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
-                </div>
-                """,
+          <div class="winner-card">
+              <h1 style="color: #F59E0B; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
+              <h2 style="color: #FFFFFF; margin: 10px 0;">{ganador['grupo']}</h2>
+              <h3 style="color: #10B981; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
+          </div>
+          """,
           unsafe_allow_html=True,
       )
 
