@@ -49,12 +49,13 @@ st.markdown("""
         text-align: center;
         margin-bottom: 25px;
     }
-    .status-card {
-        background-color: #111827;
-        border: 1px solid #374151;
-        padding: 10px 15px;
-        border-radius: 8px;
-        margin-bottom: 10px;
+    .locked-card {
+        background-color: #371B1E;
+        border: 1px solid #EF4444;
+        color: #FCA5A5;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 20px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -143,6 +144,7 @@ def realizar_sorteo():
     estado_global["ofertas"] = {}
     estado_global["bloqueados"] = {}
     estado_global["resultados"] = {}
+    estado_global["ronda_actual"] = 1
 
 if not estado_global["asignacion"]:
     realizar_sorteo()
@@ -166,7 +168,7 @@ if rol == "Portal Jugador":
         
     if "mi_grupo" not in st.session_state:
         st.subheader("👥 Selección Inicial de Equipo")
-        st.info("👋 Bienvenida/o. Selecciona a qué equipo perteneces.")
+        st.info("👋 Bienvenida/o. Selecciona el grupo asignado para tu mesa de trabajo.")
         
         grupo_elegido = st.selectbox("Selecciona tu Equipo:", ["Grupo 1", "Grupo 2", "Grupo 3", "Grupo 4", "Grupo 5"])
         if st.button("✅ Confirmar e Ingresar como " + grupo_elegido):
@@ -174,12 +176,17 @@ if rol == "Portal Jugador":
             st.rerun()
     else:
         grupo_sel = st.session_state["mi_grupo"]
+        
+        if st.sidebar.button(f"🚪 Cambiar de Equipo (Actual: {grupo_sel})"):
+            del st.session_state["mi_grupo"]
+            st.rerun()
+
         ronda_act = estado_global["ronda_actual"]
         info_ronda = INFO_RONDAS[ronda_act]
         
         c_head1, c_head2 = st.columns([3, 1])
         with c_head1:
-            st.subheader(f"👥 Portal de Ofertas — **{grupo_sel}**")
+            st.subheader(f"👥 Portal de Ofertas — {grupo_sel}")
         with c_head2:
             st.caption(f"🔒 Equipo fijado: **{grupo_sel}**")
         
@@ -196,16 +203,28 @@ if rol == "Portal Jugador":
         esta_bloqueado = estado_global["bloqueados"].get((ronda_act, grupo_sel), False)
         
         if esta_bloqueado:
-            st.error(f"🔒 **{grupo_sel}**: Las ofertas de tu equipo para la **{info_ronda['nombre']}** ya fueron registradas exitosamente. Espera a que el docente procese los resultados.")
+            st.markdown(
+                f"""
+                <div class="locked-card">
+                    <b>🔒 Ofertas Registradas:</b> Las ofertas del <b>{grupo_sel}</b> para la <b>{info_ronda['nombre']}</b> ya fueron enviadas al servidor. Por favor espera a que el docente ejecute el despacho económico.
+                </div>
+                """, 
+                unsafe_allow_html=True
+            )
             st.markdown("### 📋 Resumen de Ofertas Enviadas para esta Ronda:")
             for (r, p_id), off in estado_global["ofertas"].items():
                 if r == ronda_act and off["grupo"] == grupo_sel:
                     icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
                     kwh_equivalent = off['precio_oferta'] / 1000.0
-                    st.write(f"• **{icono} {off['nombre']}** ({off['fuente']}): **${off['precio_oferta']:,.0f} COP/MWh** (${kwh_equivalent:,.1f} COP/kWh) — Cap. Disp: {off['cap_disp']:.0f} MW")
+                    st.markdown(
+                        f"• **{icono} {off['nombre']}** ({off['fuente']}): "
+                        f"<b>${off['precio_oferta']:,.0f} COP/MWh</b> "
+                        f"<i>(${kwh_equivalent:,.1f} COP/kWh)</i> — Cap. Disp: <b>{off['cap_disp']:.0f} MW</b>",
+                        unsafe_allow_html=True
+                    )
         else:
             plantas_equipo = estado_global["asignacion"].get(grupo_sel, [])
-            st.info(f"📍 Ingresa la tarifa por MWh para tus 3 generadoras. (Nota: $400,000 COP/MWh equivale a $400 COP/kWh en tu factura).")
+            st.info("📍 Ingresa la tarifa por MWh para tus 3 generadoras. (Ejemplo: $400,000 COP/MWh equivale a $400 COP/kWh).")
             
             ofertas_temp = {}
             
@@ -275,10 +294,18 @@ elif rol == "Panel Administrador":
     else:
         st.success("🔓 Sesión de Administrador Activa.")
         
-        # BOTÓN DE REFRESCAR OFERTAS
-        if st.button("🔄 Refrescar Ofertas Recibidas en Tiempo Real"):
-            st.rerun()
-            
+        # CONTROLES SUPERIORES
+        c_top1, c_top2 = st.columns(2)
+        with c_top1:
+            if st.button("🔄 Refrescar Ofertas Recibidas"):
+                st.rerun()
+        with c_top2:
+            if st.button("🚨 REINICIAR PARTIDA COMPLETA (RESET TOTAL)"):
+                realizar_sorteo()
+                st.success("🚨 ¡Se ha reiniciado completamente la partida! Plantas re-sorteadas y ofertas limpiadas.")
+                st.rerun()
+                
+        st.divider()
         st.markdown("### 🎛️ Control de Ronda Activa para los Estudiantes")
         ronda_sel = st.radio(
             "Selecciona qué Ronda habilitar en la pantalla de los estudiantes:",
@@ -293,24 +320,6 @@ elif rol == "Panel Administrador":
             st.success(f"¡Ronda de estudiantes actualizada a: **{INFO_RONDAS[ronda_sel]['nombre']}**!")
             st.rerun()
             
-        st.divider()
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("🎲 Re-Sortear Plantas a los Grupos"):
-                realizar_sorteo()
-                st.success("¡Plantas reasignadas aleatoriamente!")
-                st.rerun()
-        with c2:
-            if st.button(f"🗑️ Reiniciar Ofertas de Ronda {estado_global['ronda_actual']}"):
-                r_curr = estado_global['ronda_actual']
-                estado_global["ofertas"] = {k: v for k, v in estado_global["ofertas"].items() if k[0] != r_curr}
-                estado_global["bloqueados"] = {k: v for k, v in estado_global["bloqueados"].items() if k[0] != r_curr}
-                if r_curr in estado_global["resultados"]:
-                    del estado_global["resultados"][r_curr]
-                st.success(f"¡Ofertas de la Ronda {r_curr} reseteadas!")
-                st.rerun()
-                
         st.divider()
         
         ronda_proc = estado_global["ronda_actual"]
