@@ -4,10 +4,10 @@ import plotly.graph_objects as go
 import streamlit as st
 
 # ---------------------------------------------------------
-# CONFIGURACIÓN GENERAL Y ESTILO (TEMA CLARO DE ALTO CONTRASTE)
+# CONFIGURACIÓN GENERAL Y ESTILO (TEMA CLARO DEDICADO)
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Ingenieria en Energía Inteligente", page_icon="⚡", layout="wide"
+    page_title="Ingeniería en Energía Inteligente", page_icon="⚡", layout="wide"
 )
 
 st.markdown(
@@ -19,7 +19,7 @@ st.markdown(
         color: #0F172A !important;
     }
     
-    /* 2. OCULTAR O BLANQUEAR BARRA Y LÍNEA SUPERIOR */
+    /* 2. OCULTAR O BLANQUEAR BARRA SUPERIOR */
     header[data-testid="stHeader"] {
         background-color: #FFFFFF !important;
     }
@@ -28,7 +28,7 @@ st.markdown(
         background-image: none !important;
     }
     
-    /* 3. BARRA LATERAL (SIDEBAR) EN BLANCO/GRIS CLARO */
+    /* 3. BARRA LATERAL (SIDEBAR) EN BLANCO Y GRIS CLARO */
     section[data-testid="stSidebar"] {
         background-color: #F8FAFC !important;
         border-right: 1px solid #E2E8F0 !important;
@@ -46,33 +46,44 @@ st.markdown(
         color: #0F172A !important;
     }
 
-    /* 5. CAMPOS DE ENTRADA Y CONTROLES (INPUTS, SELECTS, NUMBER INPUTS) */
+    /* 5. DISEÑO DE CAJAS DE ENTRADA Y CONTROLES (FINAS Y ELEGANTES) */
     div[data-baseweb="input"], div[data-baseweb="select"], div[data-baseweb="base-input"] {
         background-color: #FFFFFF !important;
         border-radius: 8px !important;
         border: 1px solid #CBD5E1 !important;
+        box-shadow: none !important;
+    }
+    div[data-baseweb="input"]:focus-within, div[data-baseweb="select"]:focus-within {
+        border-color: #2563EB !important;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
     }
     input, select, textarea {
         color: #0F172A !important;
         -webkit-text-fill-color: #0F172A !important;
         background-color: #FFFFFF !important;
         font-weight: 600 !important;
+        border: none !important;
     }
-    /* Estilo explícito para Number Input y botones +/- */
+    
+    /* Number Input y botones +/- ajustados */
     div[data-testid="stNumberInput"] input {
         color: #0F172A !important;
         -webkit-text-fill-color: #0F172A !important;
         background-color: #FFFFFF !important;
     }
     div[data-testid="stNumberInput"] button {
+        background-color: #F1F5F9 !important;
+        color: #334155 !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    div[data-testid="stNumberInput"] button:hover {
         background-color: #E2E8F0 !important;
-        color: #0F172A !important;
-        border: none !important;
     }
     div[data-testid="stNumberInput"] button * {
         color: #0F172A !important;
     }
-    /* Selectbox desplegables */
+    
+    /* Selectbox y menús desplegables */
     div[data-baseweb="popover"], div[role="listbox"], li[role="option"] {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
@@ -96,7 +107,7 @@ st.markdown(
         color: #FFFFFF !important;
     }
 
-    /* 7. TARJETAS PERSONALIZADAS */
+    /* 7. TARJETAS PERSONALIZADAS DE ALTO CONTRASTE */
     .main-header {
         font-size: 2.3rem;
         color: #1E3A8A !important;
@@ -112,12 +123,13 @@ st.markdown(
         font-weight: 600;
     }
     .round-badge {
-        background-color: #F1F5F9;
+        background-color: #F8FAFC;
         border: 2px solid #0284C7;
-        padding: 14px 20px;
+        padding: 16px 20px;
         border-radius: 12px;
         text-align: center;
         margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
     .winner-card {
         background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
@@ -142,7 +154,7 @@ st.markdown(
         margin-top: 15px;
     }
     
-    /* 8. METRICAS Y DATAFRAMES */
+    /* 8. METRICAS Y ELEMENTOS DE REGISTRO */
     [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
         color: #0F172A !important;
     }
@@ -153,7 +165,7 @@ st.markdown(
 
 
 # ---------------------------------------------------------
-# ESTADO GLOBAL DE LA APLICACIÓN (MEMORIA DE SERVIDOR)
+# ESTADO GLOBAL DE LA APLICACIÓN
 # ---------------------------------------------------------
 @st.cache_resource
 def obtener_estado_global():
@@ -170,10 +182,10 @@ def obtener_estado_global():
 estado_global = obtener_estado_global()
 
 # ---------------------------------------------------------
-# BASE DE DATOS Y CONFIGURACIÓN DE PLANTAS (PRECIOS EN COP/kWh)
+# BASE DE DATOS DE PLANTAS DE GENERACIÓN
 # ---------------------------------------------------------
 PLANTAS_SISTEMA = [
-    # FNCER / Renovables No Convencionales (5)
+    # FNCER (5)
     {
         "id": "G1",
         "nombre": "Sol Radiante 1",
@@ -214,7 +226,7 @@ PLANTAS_SISTEMA = [
         "cap_nom": 120,
         "costo": 60.0,
     },
-    # Renovables Convencionales (5)
+    # Convencionales (5)
     {
         "id": "G6",
         "nombre": "Río Vivo 1",
@@ -255,7 +267,7 @@ PLANTAS_SISTEMA = [
         "cap_nom": 200,
         "costo": 160.0,
     },
-    # Térmicas / No Renovables (5)
+    # Térmicas (5)
     {
         "id": "G11",
         "nombre": "Térmica Carbón A",
@@ -331,7 +343,7 @@ COLOR_TIPO = {
 
 INFO_RONDAS = {
     1: {
-        "nombre": "Ronda 1: Hidrología Alta / Soleado",
+        "nombre": "Ronda 1: Hidrología Alta",
         "demanda": 1000,
         "descripcion": (
             "Condiciones climáticas óptimas. 100% de disponibilidad solar,"
@@ -379,12 +391,11 @@ if not estado_global["asignacion"]:
 # ENCABEZADO DE LA APLICACIÓN
 # ---------------------------------------------------------
 st.markdown(
-    '<div class="main-header">⚡ Ingenieria en Energía Inteligente</div>',
+    '<div class="main-header">⚡ Ingeniería en Energía Inteligente</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    '<div class="sub-header">Mercado de Energía Mayorista | Determinación del'
-    " Precio Marginal de Bolsa</div>",
+    '<div class="sub-header">Mercado de Energía Mayorista</div>',
     unsafe_allow_html=True,
 )
 
@@ -672,7 +683,6 @@ elif rol == "Panel Administrador":
                         else:
                             df.at[idx, "despachado_mw"] = 0.0
 
-                    # Multiplicación por 1000 kWh/MW
                     df["ingreso"] = df["despachado_mw"] * 1000.0 * precio_marginal
                     df["costo_total"] = df["despachado_mw"] * 1000.0 * df["costo"]
                     df["utilidad"] = df["ingreso"] - df["costo_total"]
@@ -710,23 +720,29 @@ elif rol == "Panel Administrador":
                         f" **${precio_marginal:,.2f} COP/kWh**"
                     )
 
-                    # GRAFICA CURVA DE MERITO CON ESTILO CLARO Y LEYENDAS NEGRAS
+                    # ---------------------------------------------------------
+                    # GRAFICACIÓN OPTIMIZADA DE LA CURVA DE MÉRITO
+                    # ---------------------------------------------------------
                     fig = go.Figure()
 
                     for idx, row in df.iterrows():
                         if row["despachado_mw"] == row["cap_disp"]:
-                            color = "#10B981"
+                            color_fill = "rgba(16, 185, 129, 0.4)"
+                            color_line = "#059669"
                             estado_desc = "Totalmente Despachada"
                         elif row["despachado_mw"] > 0:
-                            color = "#F59E0B"
+                            color_fill = "rgba(245, 158, 11, 0.4)"
+                            color_line = "#D97706"
                             estado_desc = (
                                 f"Parcialmente Despachada ({row['despachado_mw']:.0f} MW)"
                             )
                         else:
-                            color = "#EF4444"
+                            color_fill = "rgba(239, 68, 68, 0.3)"
+                            color_line = "#DC2626"
                             estado_desc = "No Despachada"
 
                         icono = ICONOS_FUENTE.get(row["fuente"], "⚡")
+
                         fig.add_trace(
                             go.Scatter(
                                 x=[
@@ -734,46 +750,83 @@ elif rol == "Panel Administrador":
                                     row["mw_acumulados"],
                                     row["mw_acumulados"],
                                     row["mw_previos"],
+                                    row["mw_previos"],
                                 ],
-                                y=[0, 0, row["precio_oferta"], row["precio_oferta"]],
+                                y=[
+                                    0,
+                                    0,
+                                    row["precio_oferta"],
+                                    row["precio_oferta"],
+                                    0,
+                                ],
                                 fill="toself",
-                                fillcolor=color,
-                                opacity=0.75,
-                                line=dict(color=color, width=2),
-                                name=f"{row['nombre']}",
+                                fillcolor=color_fill,
+                                line=dict(color=color_line, width=2),
+                                name=f"{icono} {row['nombre']} ({row['grupo']})",
                                 text=(
-                                    f"{icono} {row['nombre']} ({row['grupo']})<br>Estado:"
-                                    f" {estado_desc}<br>Oferta: ${row['precio_oferta']:,.2f}"
-                                    f" COP/kWh<br>Despachado: {row['despachado_mw']:.0f} /"
-                                    f" {row['cap_disp']:.0f} MW"
+                                    f"<b>{icono} {row['nombre']}</b><br>"
+                                    f"Equipo: <b>{row['grupo']}</b><br>"
+                                    f"Estado: <b>{estado_desc}</b><br>"
+                                    f"Oferta: <b>${row['precio_oferta']:,.2f} COP/kWh</b><br>"
+                                    f"Despachado: <b>{row['despachado_mw']:.0f} / {row['cap_disp']:.0f} MW</b>"
                                 ),
                                 hoverinfo="text",
+                                showlegend=True,
                             )
                         )
 
+                    # Línea de Demanda
                     fig.add_vline(
                         x=demanda,
                         line_dash="dash",
                         line_color="#0284C7",
-                        annotation_text=f"Demanda {demanda} MW",
+                        line_width=2.5,
+                        annotation_text=f"Demanda: {demanda} MW",
+                        annotation_position="top left",
+                        annotation_font=dict(size=12, color="#0284C7", family="Arial Black"),
                     )
+
+                    # Línea de Precio Marginal
                     fig.add_hline(
                         y=precio_marginal,
                         line_dash="dot",
                         line_color="#D97706",
-                        annotation_text=f"Precio Bolsa ${precio_marginal:,.2f} COP/kWh",
+                        line_width=2.5,
+                        annotation_text=f"Precio Bolsa: ${precio_marginal:,.2f} COP/kWh",
+                        annotation_position="bottom right",
+                        annotation_font=dict(size=12, color="#D97706", family="Arial Black"),
                     )
 
                     fig.update_layout(
-                        title=f"Curva de Mérito — {info_proc['nombre']}",
-                        xaxis_title="Potencia Acumulada (MW)",
-                        yaxis_title="Precio Ofertado (COP/kWh)",
+                        title=dict(
+                            text=f"<b>Curva de Mérito — {info_proc['nombre']}</b>",
+                            font=dict(size=18, color="#1E3A8A"),
+                        ),
+                        xaxis=dict(
+                            title="<b>Potencia Acumulada (MW)</b>",
+                            color="#0F172A",
+                            gridcolor="#E2E8F0",
+                            zerolinecolor="#CBD5E1",
+                        ),
+                        yaxis=dict(
+                            title="<b>Precio Ofertado (COP/kWh)</b>",
+                            color="#0F172A",
+                            gridcolor="#E2E8F0",
+                            zerolinecolor="#CBD5E1",
+                        ),
                         paper_bgcolor="#FFFFFF",
                         plot_bgcolor="#F8FAFC",
-                        font=dict(color="#0F172A", size=13),
-                        showlegend=False,
-                        height=480,
+                        font=dict(color="#0F172A", size=12),
+                        legend=dict(
+                            bgcolor="rgba(255,255,255,0.9)",
+                            bordercolor="#CBD5E1",
+                            borderwidth=1,
+                            font=dict(color="#0F172A", size=10),
+                        ),
+                        height=540,
+                        margin=dict(l=50, r=50, t=60, b=50),
                     )
+
                     st.plotly_chart(fig, use_container_width=True)
 
                     st.subheader("🏆 Resultados Financieros de la Ronda Actual")
