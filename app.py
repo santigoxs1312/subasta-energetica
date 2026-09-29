@@ -4,64 +4,66 @@ import plotly.graph_objects as go
 import streamlit as st
 
 # ---------------------------------------------------------
-# CONFIGURACIÓN GENERAL Y ESTILO
+# CONFIGURACIÓN GENERAL Y ESTILO (TEMA CLARO)
 # ---------------------------------------------------------
 st.set_page_config(
-    page_title="Subasta Energética - ICESI", page_icon="⚡", layout="wide"
+    page_title="Ingenieria en Energía Inteligente", page_icon="⚡", layout="wide"
 )
 
 st.markdown(
     """
     <style>
     .stApp {
-        background-color: #000000 !important;
-        color: #FFFFFF !important;
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
     }
     .main-header {
-        font-size:2.2rem;
-        color:#38BDF8;
-        text-align:center;
-        font-weight:bold;
-        margin-bottom:5px;
+        font-size: 2.3rem;
+        color: #1E3A8A;
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 5px;
     }
     .sub-header {
-        font-size:1.05rem;
-        color:#9CA3AF;
-        text-align:center;
-        margin-bottom:20px;
+        font-size: 1.1rem;
+        color: #334155;
+        text-align: center;
+        margin-bottom: 20px;
     }
     .round-badge {
-        background-color: #1E293B;
-        border: 1px solid #38BDF8;
-        color: #38BDF8;
-        padding: 12px 18px;
+        background-color: #F1F5F9;
+        border: 2px solid #0284C7;
+        color: #0369A1;
+        padding: 14px 20px;
         border-radius: 12px;
         font-weight: bold;
         text-align: center;
         margin-bottom: 20px;
     }
     .winner-card {
-        background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%);
-        border: 2px solid #F59E0B;
+        background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+        border: 2px solid #D97706;
         padding: 20px;
         border-radius: 15px;
         text-align: center;
         margin-bottom: 25px;
+        color: #78350F;
     }
     .locked-card {
-        background-color: #371B1E;
+        background-color: #FEF2F2;
         border: 1px solid #EF4444;
-        color: #FCA5A5;
+        color: #991B1B;
         padding: 15px;
         border-radius: 10px;
         margin-bottom: 20px;
     }
     .result-card {
-        background-color: #0F172A;
-        border: 1px solid #10B981;
-        padding: 15px;
+        background-color: #F0FDF4;
+        border: 2px solid #16A34A;
+        padding: 18px;
         border-radius: 10px;
         margin-top: 15px;
+        color: #064E3B;
     }
     </style>
 """,
@@ -80,14 +82,14 @@ def obtener_estado_global():
       "ofertas": {},  # Dict con llaves (ronda, planta_id)
       "bloqueados": {},  # Dict con llaves (ronda, grupo)
       "resultados": {},  # DataFrames resúmenes por ronda
-      "precios_marginales": {},  # Guarda el precio marginal por ronda
+      "precios_marginales": {},  # Guarda el precio marginal por ronda (COP/kWh)
   }
 
 
 estado_global = obtener_estado_global()
 
 # ---------------------------------------------------------
-# BASE DE DATOS Y CONFIGURACIÓN DE PLANTAS
+# BASE DE DATOS Y CONFIGURACIÓN DE PLANTAS (PRECIOS EN COP/kWh)
 # ---------------------------------------------------------
 PLANTAS_SISTEMA = [
     # FNCER / Renovables No Convencionales (5)
@@ -97,7 +99,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Solar",
         "tipo": "FNCER",
         "cap_nom": 80,
-        "costo": 40000,
+        "costo": 40.0,
     },
     {
         "id": "G2",
@@ -105,7 +107,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Solar",
         "tipo": "FNCER",
         "cap_nom": 80,
-        "costo": 40000,
+        "costo": 40.0,
     },
     {
         "id": "G3",
@@ -113,7 +115,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Solar",
         "tipo": "FNCER",
         "cap_nom": 100,
-        "costo": 50000,
+        "costo": 50.0,
     },
     {
         "id": "G4",
@@ -121,7 +123,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Eólica",
         "tipo": "FNCER",
         "cap_nom": 120,
-        "costo": 60000,
+        "costo": 60.0,
     },
     {
         "id": "G5",
@@ -129,7 +131,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Eólica",
         "tipo": "FNCER",
         "cap_nom": 120,
-        "costo": 60000,
+        "costo": 60.0,
     },
     # Renovables Convencionales (5)
     {
@@ -138,7 +140,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Hidro Filo",
         "tipo": "Convencional",
         "cap_nom": 100,
-        "costo": 80000,
+        "costo": 80.0,
     },
     {
         "id": "G7",
@@ -146,7 +148,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Hidro Filo",
         "tipo": "Convencional",
         "cap_nom": 100,
-        "costo": 80000,
+        "costo": 80.0,
     },
     {
         "id": "G8",
@@ -154,7 +156,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Hidro Embalse",
         "tipo": "Convencional",
         "cap_nom": 150,
-        "costo": 120000,
+        "costo": 120.0,
     },
     {
         "id": "G9",
@@ -162,7 +164,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Hidro Embalse",
         "tipo": "Convencional",
         "cap_nom": 150,
-        "costo": 140000,
+        "costo": 140.0,
     },
     {
         "id": "G10",
@@ -170,7 +172,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Hidro Embalse",
         "tipo": "Convencional",
         "cap_nom": 200,
-        "costo": 160000,
+        "costo": 160.0,
     },
     # Térmicas / No Renovables (5)
     {
@@ -179,7 +181,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Carbón",
         "tipo": "Térmica",
         "cap_nom": 150,
-        "costo": 280000,
+        "costo": 280.0,
     },
     {
         "id": "G12",
@@ -187,7 +189,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Carbón",
         "tipo": "Térmica",
         "cap_nom": 150,
-        "costo": 300000,
+        "costo": 300.0,
     },
     {
         "id": "G13",
@@ -195,7 +197,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Gas",
         "tipo": "Térmica",
         "cap_nom": 200,
-        "costo": 380000,
+        "costo": 380.0,
     },
     {
         "id": "G14",
@@ -203,7 +205,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Gas",
         "tipo": "Térmica",
         "cap_nom": 200,
-        "costo": 420000,
+        "costo": 420.0,
     },
     {
         "id": "G15",
@@ -211,7 +213,7 @@ PLANTAS_SISTEMA = [
         "fuente": "Diésel",
         "tipo": "Térmica",
         "cap_nom": 150,
-        "costo": 600000,
+        "costo": 600.0,
     },
 ]
 
@@ -227,18 +229,21 @@ ICONOS_FUENTE = {
 
 COLOR_TIPO = {
     "FNCER": {
-        "bg": "#064e3b",
-        "border": "#10B981",
+        "bg": "#ECFDF5",
+        "border": "#059669",
+        "text": "#065F46",
         "badge": "Renovable No Convencional",
     },
     "Convencional": {
-        "bg": "#1e3a8a",
-        "border": "#3B82F6",
+        "bg": "#EFF6FF",
+        "border": "#2563EB",
+        "text": "#1E40AF",
         "badge": "Renovable Convencional",
     },
     "Térmica": {
-        "bg": "#7f1d1d",
-        "border": "#EF4444",
+        "bg": "#FEF2F2",
+        "border": "#DC2626",
+        "text": "#991B1B",
         "badge": "No Renovable / Térmica",
     },
 }
@@ -293,7 +298,7 @@ if not estado_global["asignacion"]:
 # ENCABEZADO DE LA APLICACIÓN
 # ---------------------------------------------------------
 st.markdown(
-    '<div class="main-header">⚡ Subasta Energética - ICESI INNTERACTIVA</div>',
+    '<div class="main-header">⚡ Ingenieria en Energía Inteligente</div>',
     unsafe_allow_html=True,
 )
 st.markdown(
@@ -345,7 +350,7 @@ if rol == "Portal Jugador":
         f"""
         <div class="round-badge">
             📢 <b>ESCENARIO ACTIVO: {info_ronda['nombre'].upper()}</b><br>
-            <span style="font-size:0.9em; font-weight:normal; color:#D1D5DB;">{info_ronda['descripcion']}</span>
+            <span style="font-size:0.95em; font-weight:normal; color:#1E293B;">{info_ronda['descripcion']}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -369,10 +374,9 @@ if rol == "Portal Jugador":
       for (r, p_id), off in estado_global["ofertas"].items():
         if r == ronda_act and off["grupo"] == grupo_sel:
           icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
-          # Formato de texto limpio sin comillas complejas ni conversión a kWh
           st.markdown(
               f"• **{icono} {off['nombre']}** ({off['fuente']}):"
-              f" **${off['precio_oferta']:,.0f} COP/MWh** — Cap. Disp:"
+              f" **${off['precio_oferta']:,.2f} COP/kWh** — Cap. Disp:"
               f" **{off['cap_disp']:.0f} MW**"
           )
 
@@ -390,12 +394,12 @@ if rol == "Portal Jugador":
           st.markdown(
               f"""
               <div class="result-card">
-                  <h3 style="color:#10B981; margin:0;">📊 Resultados de tu Equipo — {info_ronda['nombre']}</h3>
-                  <p style="margin:5px 0;"><b>Precio Marginal de Bolsa:</b> ${precio_m:,.2f} COP/MWh</p>
-                  <hr style="border-color:#374151;">
-                  <p>⚡ <b>Energía Despachada:</b> {mw_desp:,.0f} MW</p>
-                  <p>💵 <b>Ingresos Totales:</b> ${ingresos:,.2f} COP</p>
-                  <p>📈 <b>Utilidad Neta Obtenida:</b> <span style="font-size:1.2em; color:#F59E0B; font-weight:bold;">${utilidad:,.2f} COP</span></p>
+                  <h3 style="color:#065F46; margin:0;">📊 Resultados de tu Equipo — {info_ronda['nombre']}</h3>
+                  <p style="margin:8px 0; font-size:1.1em; color:#0F172A;"><b>Precio Marginal de Bolsa:</b> <span style="color:#2563EB; font-weight:bold;">${precio_m:,.2f} COP/kWh</span></p>
+                  <hr style="border-color:#CBD5E1;">
+                  <p style="color:#0F172A;">⚡ <b>Energía Despachada:</b> {mw_desp:,.0f} MW</p>
+                  <p style="color:#0F172A;">💵 <b>Ingresos Totales:</b> ${ingresos:,.2f} COP</p>
+                  <p style="color:#0F172A;">📈 <b>Utilidad Neta Obtenida:</b> <span style="font-size:1.2em; color:#D97706; font-weight:bold;">${utilidad:,.2f} COP</span></p>
               </div>
               """,
               unsafe_allow_html=True,
@@ -404,7 +408,7 @@ if rol == "Portal Jugador":
     else:
       plantas_equipo = estado_global["asignacion"].get(grupo_sel, [])
       st.info(
-          "📍 Ingresa el precio de oferta en COP/MWh para tus 3 generadoras."
+          "📍 Ingresa el precio de oferta en COP/kWh para tus 3 generadoras."
       )
 
       ofertas_temp = {}
@@ -431,9 +435,9 @@ if rol == "Portal Jugador":
         st.markdown(
             f"""
             <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
-                <h4 style="margin:0; color: #FFFFFF;">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
-                <p style="margin:4px 0 0 0; color: #E5E7EB; font-size:0.95em;">
-                    Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.0f} COP/MWh</b>
+                <h4 style="margin:0; color: {estilo['text']};">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
+                <p style="margin:4px 0 0 0; color: #334155; font-size:0.95em;">
+                    Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.2f} COP/kWh</b>
                 </p>
             </div>
             """,
@@ -441,11 +445,11 @@ if rol == "Portal Jugador":
         )
 
         precio = st.number_input(
-            f"Precio de Oferta para {p['nombre']} (COP/MWh)",
+            f"Precio de Oferta para {p['nombre']} (COP/kWh)",
             min_value=0.0,
-            max_value=2000000.0,
+            max_value=2000.0,
             value=float(p["costo"]),
-            step=5000.0,
+            step=5.0,
             key=f"inp_{grupo_sel}_r{ronda_act}_{p['id']}",
         )
 
@@ -589,8 +593,9 @@ elif rol == "Panel Administrador":
             else:
               df.at[idx, "despachado_mw"] = 0.0
 
-          df["ingreso"] = df["despachado_mw"] * precio_marginal
-          df["costo_total"] = df["despachado_mw"] * df["costo"]
+          # Multiplicación por 1000 kWh/MW para mantener consistencia financiera
+          df["ingreso"] = df["despachado_mw"] * 1000.0 * precio_marginal
+          df["costo_total"] = df["despachado_mw"] * 1000.0 * df["costo"]
           df["utilidad"] = df["ingreso"] - df["costo_total"]
 
           # Resumen agrupado por equipos
@@ -624,10 +629,10 @@ elif rol == "Panel Administrador":
 
           st.markdown(
               "### 💰 Precio Marginal de Bolsa:"
-              f" **${precio_marginal:,.2f} COP/MWh**"
+              f" **${precio_marginal:,.2f} COP/kWh**"
           )
 
-          # CURVA DE MÉRITO (PLOTLY)
+          # CURVA DE MÉRITO (PLOTLY) CON TEMA CLARO
           fig = go.Figure()
 
           for idx, row in df.iterrows():
@@ -655,13 +660,13 @@ elif rol == "Panel Administrador":
                     y=[0, 0, row["precio_oferta"], row["precio_oferta"]],
                     fill="toself",
                     fillcolor=color,
-                    opacity=0.65,
+                    opacity=0.7,
                     line=dict(color=color, width=2),
                     name=f"{row['nombre']}",
                     text=(
                         f"{icono} {row['nombre']} ({row['grupo']})<br>Estado:"
-                        f" {estado_desc}<br>Oferta: ${row['precio_oferta']:,.0f}"
-                        f" COP/MWh<br>Despachado: {row['despachado_mw']:.0f} /"
+                        f" {estado_desc}<br>Oferta: ${row['precio_oferta']:,.2f}"
+                        f" COP/kWh<br>Despachado: {row['despachado_mw']:.0f} /"
                         f" {row['cap_disp']:.0f} MW"
                     ),
                     hoverinfo="text",
@@ -671,23 +676,23 @@ elif rol == "Panel Administrador":
           fig.add_vline(
               x=demanda,
               line_dash="dash",
-              line_color="#38BDF8",
+              line_color="#0284C7",
               annotation_text=f"Demanda {demanda} MW",
           )
           fig.add_hline(
               y=precio_marginal,
               line_dash="dot",
-              line_color="#F59E0B",
-              annotation_text=f"Precio Bolsa ${precio_marginal:,.0f} COP/MWh",
+              line_color="#D97706",
+              annotation_text=f"Precio Bolsa ${precio_marginal:,.2f} COP/kWh",
           )
 
           fig.update_layout(
               title=f"Curva de Mérito — {info_proc['nombre']}",
               xaxis_title="Potencia Acumulada (MW)",
-              yaxis_title="Precio Ofertado (COP/MWh)",
-              paper_bgcolor="#000000",
-              plot_bgcolor="#111827",
-              font=dict(color="#FFFFFF"),
+              yaxis_title="Precio Ofertado (COP/kWh)",
+              paper_bgcolor="#FFFFFF",
+              plot_bgcolor="#F8FAFC",
+              font=dict(color="#0F172A"),
               showlegend=False,
               height=480,
           )
@@ -751,9 +756,9 @@ elif rol == "Panel Administrador":
       st.markdown(
           f"""
           <div class="winner-card">
-              <h1 style="color: #F59E0B; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
-              <h2 style="color: #FFFFFF; margin: 10px 0;">{ganador['grupo']}</h2>
-              <h3 style="color: #10B981; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
+              <h1 style="color: #B45309; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
+              <h2 style="color: #1E3A8A; margin: 10px 0;">{ganador['grupo']}</h2>
+              <h3 style="color: #047857; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
           </div>
           """,
           unsafe_allow_html=True,
