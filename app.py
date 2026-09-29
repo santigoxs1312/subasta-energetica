@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 # ---------------------------------------------------------
-# CONFIGURACIÓN GENERAL Y ESTILO (TEMA CLARO)
+# CONFIGURACIÓN GENERAL Y ESTILO (TEMA CLARO DE ALTO CONTRASTE)
 # ---------------------------------------------------------
 st.set_page_config(
     page_title="Ingenieria en Energía Inteligente", page_icon="⚡", layout="wide"
@@ -13,30 +13,88 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* 1. FONDO GENERAL Y TEXTO PRINCIPAL */
     .stApp {
         background-color: #FFFFFF !important;
         color: #0F172A !important;
     }
+    
+    /* 2. OCULTAR O BLANQUEAR BARRA Y LÍNEA SUPERIOR */
+    header[data-testid="stHeader"] {
+        background-color: #FFFFFF !important;
+    }
+    div[data-testid="stDecoration"] {
+        background-color: #FFFFFF !important;
+        background-image: none !important;
+    }
+    
+    /* 3. BARRA LATERAL (SIDEBAR) EN BLANCO/GRIS CLARO */
+    section[data-testid="stSidebar"] {
+        background-color: #F8FAFC !important;
+        border-right: 1px solid #E2E8F0 !important;
+    }
+    section[data-testid="stSidebar"] * {
+        color: #0F172A !important;
+    }
+
+    /* 4. REGLAS DE CONTRASTE PARA TÍTULOS Y TEXTOS */
+    h1, h2, h3, h4, h5, h6 {
+        color: #1E3A8A !important;
+        font-weight: 700 !important;
+    }
+    p, label, span, div, li {
+        color: #0F172A !important;
+    }
+
+    /* 5. CAMPOS DE ENTRADA (INPUTS, SELECTS, NUMBER INPUTS) */
+    div[data-baseweb="input"], div[data-baseweb="select"] {
+        background-color: #F1F5F9 !important;
+        border-radius: 8px !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    input {
+        color: #0F172A !important;
+        font-weight: 600 !important;
+    }
+
+    /* 6. BOTONES CON ALTO CONTRASTE */
+    .stButton > button {
+        background-color: #1E3A8A !important;
+        color: #FFFFFF !important;
+        border-radius: 8px !important;
+        border: none !important;
+        font-weight: bold !important;
+        padding: 10px 20px !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .stButton > button:hover {
+        background-color: #2563EB !important;
+        color: #FFFFFF !important;
+    }
+    .stButton > button * {
+        color: #FFFFFF !important;
+    }
+
+    /* 7. TARJETAS PERSONALIZADAS */
     .main-header {
         font-size: 2.3rem;
-        color: #1E3A8A;
+        color: #1E3A8A !important;
         text-align: center;
-        font-weight: bold;
+        font-weight: 800;
         margin-bottom: 5px;
     }
     .sub-header {
         font-size: 1.1rem;
-        color: #334155;
+        color: #334155 !important;
         text-align: center;
         margin-bottom: 20px;
+        font-weight: 600;
     }
     .round-badge {
         background-color: #F1F5F9;
         border: 2px solid #0284C7;
-        color: #0369A1;
         padding: 14px 20px;
         border-radius: 12px;
-        font-weight: bold;
         text-align: center;
         margin-bottom: 20px;
     }
@@ -47,12 +105,10 @@ st.markdown(
         border-radius: 15px;
         text-align: center;
         margin-bottom: 25px;
-        color: #78350F;
     }
     .locked-card {
         background-color: #FEF2F2;
-        border: 1px solid #EF4444;
-        color: #991B1B;
+        border: 2px solid #EF4444;
         padding: 15px;
         border-radius: 10px;
         margin-bottom: 20px;
@@ -63,7 +119,11 @@ st.markdown(
         padding: 18px;
         border-radius: 10px;
         margin-top: 15px;
-        color: #064E3B;
+    }
+    
+    /* 8. METRICAS Y DATAFRAMES */
+    [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
+        color: #0F172A !important;
     }
     </style>
 """,
@@ -79,10 +139,10 @@ def obtener_estado_global():
   return {
       "asignacion": {},
       "ronda_actual": 1,
-      "ofertas": {},  # Dict con llaves (ronda, planta_id)
-      "bloqueados": {},  # Dict con llaves (ronda, grupo)
-      "resultados": {},  # DataFrames resúmenes por ronda
-      "precios_marginales": {},  # Guarda el precio marginal por ronda (COP/kWh)
+      "ofertas": {},
+      "bloqueados": {},
+      "resultados": {},
+      "precios_marginales": {},
   }
 
 
@@ -231,19 +291,19 @@ COLOR_TIPO = {
     "FNCER": {
         "bg": "#ECFDF5",
         "border": "#059669",
-        "text": "#065F46",
+        "text": "#064E3B",
         "badge": "Renovable No Convencional",
     },
     "Convencional": {
         "bg": "#EFF6FF",
         "border": "#2563EB",
-        "text": "#1E40AF",
+        "text": "#1E3A8A",
         "badge": "Renovable Convencional",
     },
     "Térmica": {
         "bg": "#FEF2F2",
         "border": "#DC2626",
-        "text": "#991B1B",
+        "text": "#7F1D1D",
         "badge": "No Renovable / Térmica",
     },
 }
@@ -349,8 +409,8 @@ if rol == "Portal Jugador":
     st.markdown(
         f"""
         <div class="round-badge">
-            📢 <b>ESCENARIO ACTIVO: {info_ronda['nombre'].upper()}</b><br>
-            <span style="font-size:0.95em; font-weight:normal; color:#1E293B;">{info_ronda['descripcion']}</span>
+            <span style="color:#0284C7; font-weight:800; font-size:1.1em;">📢 ESCENARIO ACTIVO: {info_ronda['nombre'].upper()}</span><br>
+            <span style="font-size:0.95em; color:#334155;">{info_ronda['descripcion']}</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -364,7 +424,7 @@ if rol == "Portal Jugador":
       st.markdown(
           f"""
           <div class="locked-card">
-              <b>🔒 Ofertas Registradas:</b> Las ofertas del <b>{grupo_sel}</b> para la <b>{info_ronda['nombre']}</b> ya fueron enviadas al servidor. Por favor espera a que el docente ejecute el despacho económico.
+              <b style="color:#991B1B;">🔒 Ofertas Registradas:</b> <span style="color:#7F1D1D;">Las ofertas del <b>{grupo_sel}</b> para la <b>{info_ronda['nombre']}</b> ya fueron enviadas al servidor. Por favor espera a que el docente ejecute el despacho económico.</span>
           </div>
           """,
           unsafe_allow_html=True,
@@ -380,7 +440,6 @@ if rol == "Portal Jugador":
               f" **{off['cap_disp']:.0f} MW**"
           )
 
-      # MOSTRAR RESULTADOS SI EL DOCENTE YA EJECUTÓ EL DESPACHO
       if ronda_act in estado_global["resultados"]:
         df_res = estado_global["resultados"][ronda_act]
         res_mi_grupo = df_res[df_res["grupo"] == grupo_sel]
@@ -434,9 +493,9 @@ if rol == "Portal Jugador":
 
         st.markdown(
             f"""
-            <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
-                <h4 style="margin:0; color: {estilo['text']};">{icono} {p['nombre']} — <span style="font-size: 0.85em; opacity: 0.9;">{estilo['badge']}</span></h4>
-                <p style="margin:4px 0 0 0; color: #334155; font-size:0.95em;">
+            <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 14px; border-radius: 8px; margin-bottom: 12px;">
+                <h4 style="margin:0; color: {estilo['text']};">{icono} {p['nombre']} — <span style="font-size: 0.85em;">{estilo['badge']}</span></h4>
+                <p style="margin:4px 0 0 0; color: #1E293B; font-size:0.95em;">
                     Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.2f} COP/kWh</b>
                 </p>
             </div>
@@ -487,11 +546,10 @@ elif rol == "Panel Administrador":
   if password != "subasta2026":
     if password != "":
       st.error("❌ Contraseña incorrecta.")
-    st.warning("⚠️ Debes ingresar la clave para acceder al panel de control.")
+    st.warning("⚠️️ Debes ingresar la clave para acceder al panel de control.")
   else:
     st.success("🔓 Sesión de Administrador Activa.")
 
-    # CONTROLES SUPERIORES
     c_top1, c_top2 = st.columns(2)
     with c_top1:
       if st.button("🔄 Refrescar Ofertas Recibidas"):
@@ -593,12 +651,11 @@ elif rol == "Panel Administrador":
             else:
               df.at[idx, "despachado_mw"] = 0.0
 
-          # Multiplicación por 1000 kWh/MW para mantener consistencia financiera
+          # Multiplicación por 1000 kWh/MW
           df["ingreso"] = df["despachado_mw"] * 1000.0 * precio_marginal
           df["costo_total"] = df["despachado_mw"] * 1000.0 * df["costo"]
           df["utilidad"] = df["ingreso"] - df["costo_total"]
 
-          # Resumen agrupado por equipos
           resumen = (
               df.groupby("grupo")
               .agg(
@@ -632,20 +689,20 @@ elif rol == "Panel Administrador":
               f" **${precio_marginal:,.2f} COP/kWh**"
           )
 
-          # CURVA DE MÉRITO (PLOTLY) CON TEMA CLARO
+          # GRAFICA CURVA DE MERITO CON ESTILO CLARO Y LEYENDAS NEGRAS
           fig = go.Figure()
 
           for idx, row in df.iterrows():
             if row["despachado_mw"] == row["cap_disp"]:
-              color = "#10B981"  # Verde
+              color = "#10B981"
               estado_desc = "Totalmente Despachada"
             elif row["despachado_mw"] > 0:
-              color = "#F59E0B"  # Naranja
+              color = "#F59E0B"
               estado_desc = (
                   f"Parcialmente Despachada ({row['despachado_mw']:.0f} MW)"
               )
             else:
-              color = "#EF4444"  # Rojo
+              color = "#EF4444"
               estado_desc = "No Despachada"
 
             icono = ICONOS_FUENTE.get(row["fuente"], "⚡")
@@ -660,7 +717,7 @@ elif rol == "Panel Administrador":
                     y=[0, 0, row["precio_oferta"], row["precio_oferta"]],
                     fill="toself",
                     fillcolor=color,
-                    opacity=0.7,
+                    opacity=0.75,
                     line=dict(color=color, width=2),
                     name=f"{row['nombre']}",
                     text=(
@@ -692,7 +749,7 @@ elif rol == "Panel Administrador":
               yaxis_title="Precio Ofertado (COP/kWh)",
               paper_bgcolor="#FFFFFF",
               plot_bgcolor="#F8FAFC",
-              font=dict(color="#0F172A"),
+              font=dict(color="#0F172A", size=13),
               showlegend=False,
               height=480,
           )
@@ -711,7 +768,6 @@ elif rol == "Panel Administrador":
               use_container_width=True,
           )
 
-          # BOTÓN PARA DESCARGAR EXCEL / CSV DE LA RONDA
           csv_data = df.to_csv(index=False).encode("utf-8")
           st.download_button(
               label=(
@@ -756,7 +812,7 @@ elif rol == "Panel Administrador":
       st.markdown(
           f"""
           <div class="winner-card">
-              <h1 style="color: #B45309; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
+              <h1 style="color: #78350F; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
               <h2 style="color: #1E3A8A; margin: 10px 0;">{ganador['grupo']}</h2>
               <h3 style="color: #047857; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
           </div>
@@ -779,7 +835,6 @@ elif rol == "Panel Administrador":
           use_container_width=True,
       )
 
-      # DESCARGAR TABLA FINAL EN EXCEL/CSV
       csv_final = df_total.to_csv(index=False).encode("utf-8")
       st.download_button(
           label="📥 Descargar Resultados Acumulados Finales (Excel / CSV)",
