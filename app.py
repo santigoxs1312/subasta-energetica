@@ -176,6 +176,7 @@ def obtener_estado_global():
         "bloqueados": {},
         "resultados": {},
         "precios_marginales": {},
+        "df_despacho_completo": {},
     }
 
 
@@ -315,7 +316,7 @@ ICONOS_FUENTE = {
     "Eólica": "🌬️",
     "Hidro Filo": "💧",
     "Hidro Embalse": "🌊",
-    "Carbón": "⛏️",
+    "Carbón": "⛏️️",
     "Gas": "🔥",
     "Diésel": "⛽",
 }
@@ -326,18 +327,21 @@ COLOR_TIPO = {
         "border": "#059669",
         "text": "#064E3B",
         "badge": "Renovable No Convencional",
+        "color_plot": "#10B981",
     },
     "Convencional": {
         "bg": "#EFF6FF",
         "border": "#2563EB",
         "text": "#1E3A8A",
         "badge": "Renovable Convencional",
+        "color_plot": "#3B82F6",
     },
     "Térmica": {
         "bg": "#FEF2F2",
         "border": "#DC2626",
         "text": "#7F1D1D",
         "badge": "No Renovable / Térmica",
+        "color_plot": "#EF4444",
     },
 }
 
@@ -381,6 +385,7 @@ def realizar_sorteo():
     estado_global["bloqueados"] = {}
     estado_global["resultados"] = {}
     estado_global["precios_marginales"] = {}
+    estado_global["df_despacho_completo"] = {}
     estado_global["ronda_actual"] = 1
 
 
@@ -401,7 +406,8 @@ st.markdown(
 
 st.sidebar.title("Navegación")
 rol = st.sidebar.radio(
-    "Modo de Acceso:", ["Portal Jugador", "Panel Administrador"]
+    "Modo de Acceso:",
+    ["Portal Jugador", "Panel Administrador", "Portal del Docente"],
 )
 
 # ---------------------------------------------------------
@@ -545,8 +551,10 @@ if rol == "Portal Jugador":
                 )
 
                 ofertas_temp[(ronda_act, p["id"])] = {
+                    "id": p["id"],
                     "nombre": p["nombre"],
                     "fuente": p["fuente"],
+                    "tipo": p["tipo"],
                     "grupo": grupo_sel,
                     "cap_disp": cap_disp,
                     "costo": p["costo"],
@@ -714,211 +722,166 @@ elif rol == "Panel Administrador":
 
                     estado_global["resultados"][ronda_proc] = resumen
                     estado_global["precios_marginales"][ronda_proc] = precio_marginal
+                    estado_global["df_despacho_completo"][ronda_proc] = df
 
                     st.markdown(
                         "### 💰 Precio Marginal de Bolsa:"
                         f" **${precio_marginal:,.2f} COP/kWh**"
                     )
+                    st.success("✅ ¡Despacho económico calculado con éxito! Puedes consultar los gráficos en el Portal del Docente.")
 
-                    # ---------------------------------------------------------
-                    # GRAFICACIÓN OPTIMIZADA DE LA CURVA DE MÉRITO
-                    # ---------------------------------------------------------
-                    fig = go.Figure()
-
-                    for idx, row in df.iterrows():
-                        if row["despachado_mw"] == row["cap_disp"]:
-                            color_fill = "rgba(16, 185, 129, 0.4)"
-                            color_line = "#059669"
-                            estado_desc = "Totalmente Despachada"
-                        elif row["despachado_mw"] > 0:
-                            color_fill = "rgba(245, 158, 11, 0.4)"
-                            color_line = "#D97706"
-                            estado_desc = (
-                                f"Parcialmente Despachada ({row['despachado_mw']:.0f} MW)"
-                            )
-                        else:
-                            color_fill = "rgba(239, 68, 68, 0.3)"
-                            color_line = "#DC2626"
-                            estado_desc = "No Despachada"
-
-                        icono = ICONOS_FUENTE.get(row["fuente"], "⚡")
-
-                        fig.add_trace(
-                            go.Scatter(
-                                x=[
-                                    row["mw_previos"],
-                                    row["mw_acumulados"],
-                                    row["mw_acumulados"],
-                                    row["mw_previos"],
-                                    row["mw_previos"],
-                                ],
-                                y=[
-                                    0,
-                                    0,
-                                    row["precio_oferta"],
-                                    row["precio_oferta"],
-                                    0,
-                                ],
-                                fill="toself",
-                                fillcolor=color_fill,
-                                line=dict(color=color_line, width=2),
-                                name=f"{icono} {row['nombre']} ({row['grupo']})",
-                                text=(
-                                    f"<b>{icono} {row['nombre']}</b><br>"
-                                    f"Equipo: <b>{row['grupo']}</b><br>"
-                                    f"Estado: <b>{estado_desc}</b><br>"
-                                    f"Oferta: <b>${row['precio_oferta']:,.2f} COP/kWh</b><br>"
-                                    f"Despachado: <b>{row['despachado_mw']:.0f} / {row['cap_disp']:.0f} MW</b>"
-                                ),
-                                hoverinfo="text",
-                                showlegend=True,
-                            )
-                        )
-
-                    # Línea de Demanda
-                    fig.add_vline(
-                        x=demanda,
-                        line_dash="dash",
-                        line_color="#0284C7",
-                        line_width=2.5,
-                        annotation_text=f"Demanda: {demanda} MW",
-                        annotation_position="top left",
-                        annotation_font=dict(size=12, color="#0284C7", family="Arial Black"),
-                    )
-
-                    # Línea de Precio Marginal
-                    fig.add_hline(
-                        y=precio_marginal,
-                        line_dash="dot",
-                        line_color="#D97706",
-                        line_width=2.5,
-                        annotation_text=f"Precio Bolsa: ${precio_marginal:,.2f} COP/kWh",
-                        annotation_position="bottom right",
-                        annotation_font=dict(size=12, color="#D97706", family="Arial Black"),
-                    )
-
-                    fig.update_layout(
-                        title=dict(
-                            text=f"<b>Curva de Mérito — {info_proc['nombre']}</b>",
-                            font=dict(size=18, color="#1E3A8A"),
-                        ),
-                        xaxis=dict(
-                            title="<b>Potencia Acumulada (MW)</b>",
-                            color="#0F172A",
-                            gridcolor="#E2E8F0",
-                            zerolinecolor="#CBD5E1",
-                        ),
-                        yaxis=dict(
-                            title="<b>Precio Ofertado (COP/kWh)</b>",
-                            color="#0F172A",
-                            gridcolor="#E2E8F0",
-                            zerolinecolor="#CBD5E1",
-                        ),
-                        paper_bgcolor="#FFFFFF",
-                        plot_bgcolor="#F8FAFC",
-                        font=dict(color="#0F172A", size=12),
-                        legend=dict(
-                            bgcolor="rgba(255,255,255,0.9)",
-                            bordercolor="#CBD5E1",
-                            borderwidth=1,
-                            font=dict(color="#0F172A", size=10),
-                        ),
-                        height=540,
-                        margin=dict(l=50, r=50, t=60, b=50),
-                    )
-
-                    st.plotly_chart(fig, use_container_width=True)
-
-                    st.subheader("🏆 Resultados Financieros de la Ronda Actual")
-                    st.dataframe(
-                        resumen.sort_values(
-                            by="Utilidad_Neta", ascending=False
-                        ).style.format({
-                            "MW_Despachados": "{:,.0f} MW",
-                            "Ingresos": "${:,.2f}",
-                            "Utilidad_Neta": "${:,.2f}",
-                        }),
-                        hide_index=True,
-                        use_container_width=True,
-                    )
-
-                    csv_data = df.to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        label=(
-                            f"📥 Descargar Detalle de Despacho Ronda {ronda_proc} (Excel"
-                            " / CSV)"
-                        ),
-                        data=csv_data,
-                        file_name=f"despacho_subasta_ronda_{ronda_proc}.csv",
-                        mime="text/csv",
-                    )
-
-    # ---------------------------------------------------------
-    # TABLA DE POSICIONES FINAL / GRAN GANADOR
-    # ---------------------------------------------------------
-    st.divider()
-    st.markdown("## 🏆 Tabla de Posiciones Final (Acumulado Rondas 1 y 2)")
-
-    if 1 in estado_global["resultados"] and 2 in estado_global["resultados"]:
-        df_r1 = estado_global["resultados"][1]
-        df_r2 = estado_global["resultados"][2]
-
-        df_total = pd.merge(
-            df_r1, df_r2, on="grupo", suffixes=("_R1", "_R2"), how="outer"
-        ).fillna(0)
-        df_total["MW_Totales"] = (
-            df_total["MW_Despachados_R1"] + df_total["MW_Despachados_R2"]
-        )
-        df_total["Ingresos_Totales"] = (
-            df_total["Ingresos_R1"] + df_total["Ingresos_R2"]
-        )
-        df_total["Utilidad_Acumulada"] = (
-            df_total["Utilidad_Neta_R1"] + df_total["Utilidad_Neta_R2"]
-        )
-
-        df_total = df_total.sort_values(
-            by="Utilidad_Acumulada", ascending=False
-        ).reset_index(drop=True)
-
-        ganador = df_total.iloc[0]
-
-        st.balloons()
-        st.markdown(
-            f"""
-            <div class="winner-card">
-                <h1 style="color: #78350F; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
-                <h2 style="color: #1E3A8A; margin: 10px 0;">{ganador['grupo']}</h2>
-                <h3 style="color: #047857; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.dataframe(
-            df_total[[
-                "grupo",
-                "MW_Totales",
-                "Ingresos_Totales",
-                "Utilidad_Acumulada",
-            ]].style.format({
-                "MW_Totales": "{:,.0f} MW",
-                "Ingresos_Totales": "${:,.2f}",
-                "Utilidad_Acumulada": "${:,.2f}",
-            }),
-            hide_index=True,
-            use_container_width=True,
-        )
-
-        csv_final = df_total.to_csv(index=False).encode("utf-8")
-        st.download_button(
-            label="📥 Descargar Resultados Acumulados Finales (Excel / CSV)",
-            data=csv_final,
-            file_name="resultados_finales_subasta.csv",
-            mime="text/csv",
-        )
+# ---------------------------------------------------------
+# PORTAL DEL DOCENTE (VISUALIZACIÓN INTERACTIVA)
+# ---------------------------------------------------------
+elif rol == "Portal del Docente":
+    st.subheader("👨‍🏫 Dashboard y Visualizaciones en Tiempo Real")
+    
+    ronda_doc = st.selectbox(
+        "Seleccionar Escenario / Ronda para Visualización:",
+        options=[1, 2],
+        format_func=lambda x: INFO_RONDAS[x]["nombre"],
+        index=estado_global["ronda_actual"] - 1,
+    )
+    
+    info_r = INFO_RONDAS[ronda_doc]
+    demanda_r = info_r["demanda"]
+    precio_m = estado_global["precios_marginales"].get(ronda_doc, None)
+    df_desp = estado_global["df_despacho_completo"].get(ronda_doc, None)
+    
+    if df_desp is None or df_desp.empty:
+        st.info("ℹ️ El despacho económico para esta ronda aún no ha sido ejecutado desde el Panel Administrador.")
     else:
-        st.info(
-            "💡 Para calcular y mostrar la pantalla del Ganador Global, debes"
-            " haber ejecutado el despacho económico tanto de la Ronda 1 como de"
-            " la Ronda 2."
+        mw_total_desp = df_desp["despachado_mw"].sum()
+        
+        # 1. Métricas Clave
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Escenario Activo", f"Ronda {ronda_doc}")
+        m2.metric("Demanda Total System", f"{demanda_r:,} MW")
+        m3.metric("Precio Marginal Bolsa", f"${precio_m:,.2f} COP/kWh")
+        m4.metric("Energía Despachada", f"{mw_total_desp:,.0f} MW")
+        
+        st.divider()
+        
+        # 2. Curva de Merit Order (Oferta y Demanda)
+        st.markdown("### 📈 Curva de Oferta (Orden de Mérito) vs. Demanda")
+        
+        fig = go.Figure()
+        
+        # Construcción de pasos para el gráfico de orden de mérito
+        x_vals = [0]
+        y_vals = [df_desp.iloc[0]["precio_oferta"]]
+        hover_texts = ["Inicio"]
+        
+        for idx, row in df_desp.iterrows():
+            prev_x = row["mw_previos"]
+            curr_x = row["mw_acumulados"]
+            p = row["precio_oferta"]
+            
+            # Crear trazo escalonado por tipo de fuente
+            color = COLOR_TIPO.get(row["tipo"], {}).get("color_plot", "#64748B")
+            
+            fig.add_trace(go.Scatter(
+                x=[prev_x, curr_x, curr_x],
+                y=[p, p, p],
+                mode='lines',
+                line=dict(color=color, width=3),
+                name=f"{row['nombre']} ({row['grupo']})",
+                hovertemplate=(
+                    f"<b>{row['nombre']}</b> ({row['grupo']})<br>" +
+                    f"Fuente: {row['fuente']}<br>" +
+                    f"Oferta: ${p:,.2f} COP/kWh<br>" +
+                    f"Cap. Ofertada: {row['cap_disp']:.0f} MW<br>" +
+                    f"MW Acumulados: {curr_x:.0f} MW<extra></extra>"
+                )
+            ))
+            
+        # Línea de Demanda
+        fig.add_vline(
+            x=demanda_r, 
+            line_width=3, 
+            line_dash="dash", 
+            line_color="#DC2626",
+            annotation_text=f"Demanda Target: {demanda_r} MW",
+            annotation_position="top right"
+        )
+        
+        # Línea de Precio Marginal
+        fig.add_hline(
+            y=precio_m, 
+            line_width=2, 
+            line_dash="dot", 
+            line_color="#2563EB",
+            annotation_text=f"Precio Bolsa: ${precio_m:,.2f}",
+            annotation_position="bottom left"
+        )
+
+        fig.update_layout(
+            title=f"Curva de Mérito Económico — {info_r['nombre']}",
+            xaxis_title="Capacidad Acumulada (MW)",
+            yaxis_title="Precio de Oferta (COP/kWh)",
+            plot_bgcolor="#FFFFFF",
+            paper_bgcolor="#FFFFFF",
+            font=dict(color="#0F172A", size=12),
+            showlegend=False,
+            height=500,
+            margin=dict(l=40, r=40, t=60, b=40),
+        )
+        
+        fig.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#F1F5F9')
+        fig.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#F1F5F9')
+
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.divider()
+        
+        # 3. Rendimiento y Resultados por Equipo
+        st.markdown("### 🏆 Ranking de Resultados Financieros por Equipo")
+        
+        df_res_ronda = estado_global["resultados"].get(ronda_doc, pd.DataFrame())
+        if not df_res_ronda.empty:
+            df_res_sorted = df_res_ronda.sort_values(by="Utilidad_Neta", ascending=False)
+            
+            fig_bar = go.Figure(go.Bar(
+                x=df_res_sorted["grupo"],
+                y=df_res_sorted["Utilidad_Neta"],
+                marker_color="#0284C7",
+                text=[f"${val:,.0f}" for val in df_res_sorted["Utilidad_Neta"]],
+                textposition='auto',
+            ))
+            
+            fig_bar.update_layout(
+                title="Utilidad Neta Obtenida (COP)",
+                xaxis_title="Equipo",
+                yaxis_title="COP",
+                plot_bgcolor="#FFFFFF",
+                paper_bgcolor="#FFFFFF",
+                font=dict(color="#0F172A"),
+                height=380,
+            )
+            
+            st.plotly_chart(fig_bar, use_container_width=True)
+        
+        # 4. Tabla Detallada del Despacho
+        st.markdown("### 📋 Desglose Detallado del Despacho de Generación")
+        
+        df_tabla = df_desp[[
+            "grupo", "nombre", "fuente", "tipo", "cap_disp", "costo", 
+            "precio_oferta", "despachado_mw", "ingreso", "utilidad"
+        ]].copy()
+        
+        df_tabla.columns = [
+            "Equipo", "Planta", "Fuente", "Tipo", "Cap. Disp (MW)", 
+            "Costo (COP)", "Oferta (COP)", "MW Despachados", "Ingresos (COP)", "Utilidad (COP)"
+        ]
+        
+        st.dataframe(
+            df_tabla.style.format({
+                "Cap. Disp (MW)": "{:,.0f}",
+                "Costo (COP)": "${:,.2f}",
+                "Oferta (COP)": "${:,.2f}",
+                "MW Despachados": "{:,.0f}",
+                "Ingresos (COP)": "${:,.2f}",
+                "Utilidad (COP)": "${:,.2f}",
+            }),
+            use_container_width=True,
         )
