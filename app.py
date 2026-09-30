@@ -1,4 +1,6 @@
 import random
+from html import escape
+
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
@@ -158,10 +160,122 @@ st.markdown(
     [data-testid="stMetricValue"], [data-testid="stMetricLabel"] {
         color: #0F172A !important;
     }
+
+    /* 9. CONTRASTE ADICIONAL: TABLAS DE RESULTADOS (HTML, fondo blanco) */
+    .tabla-wrap {
+        overflow-x: auto;
+        background-color: #FFFFFF !important;
+        border: 1px solid #94A3B8;
+        border-radius: 10px;
+        margin-bottom: 18px;
+    }
+    table.tabla-mercado {
+        width: 100%;
+        border-collapse: collapse;
+        background-color: #FFFFFF !important;
+        font-size: 0.98rem;
+    }
+    table.tabla-mercado th {
+        background-color: #1E3A8A !important;
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+        text-align: left;
+        padding: 10px 14px !important;
+        border: none !important;
+        border-bottom: 2px solid #0F172A !important;
+    }
+    table.tabla-mercado td {
+        background-color: #FFFFFF !important;
+        color: #0F172A !important;
+        font-weight: 600;
+        padding: 9px 14px !important;
+        border: none !important;
+        border-bottom: 1px solid #CBD5E1 !important;
+    }
+    table.tabla-mercado tbody tr:nth-child(even) td {
+        background-color: #F1F5F9 !important;
+    }
+    table.tabla-mercado th.num, table.tabla-mercado td.num {
+        text-align: right;
+    }
+
+    /* 9b. BOTONES DE DESCARGA (no son .stButton, quedaban oscuro sobre oscuro) */
+    [data-testid="stDownloadButton"] button {
+        background-color: #1E3A8A !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: bold !important;
+        padding: 10px 20px !important;
+    }
+    [data-testid="stDownloadButton"] button:hover {
+        background-color: #2563EB !important;
+    }
+    [data-testid="stDownloadButton"] button * {
+        color: #FFFFFF !important;
+    }
+    section[data-testid="stSidebar"] .stButton > button,
+    section[data-testid="stSidebar"] .stButton > button * {
+        color: #FFFFFF !important;
+    }
+
+    /* 9c. TEXTOS SECUNDARIOS, ALERTAS, ICONOS Y PLACEHOLDERS */
+    [data-testid="stCaptionContainer"],
+    [data-testid="stCaptionContainer"] * {
+        color: #334155 !important;
+        opacity: 1 !important;
+    }
+    [data-testid="stMetricDelta"],
+    [data-testid="stMetricDelta"] * {
+        color: #0F172A !important;
+    }
+    div[data-testid="stAlert"] *,
+    div[data-testid="stAlertContainer"] * {
+        color: #0F172A !important;
+    }
+    div[data-baseweb="select"] svg,
+    div[data-baseweb="input"] svg {
+        fill: #334155 !important;
+        color: #334155 !important;
+    }
+    input::placeholder, textarea::placeholder {
+        color: #64748B !important;
+        -webkit-text-fill-color: #64748B !important;
+        opacity: 1 !important;
+    }
+    hr {
+        border-color: #CBD5E1 !important;
+    }
     </style>
 """,
     unsafe_allow_html=True,
 )
+
+
+def mostrar_tabla(df, formatos=None):
+    """Dibuja una tabla HTML con fondo blanco y texto oscuro (alto contraste)."""
+    formatos = formatos or {}
+    encabezado = "".join(
+        f'<th class="{"num" if c in formatos else ""}">{escape(str(c))}</th>'
+        for c in df.columns
+    )
+    filas = ""
+    for _, fila in df.iterrows():
+        celdas = ""
+        for c in df.columns:
+            valor = fila[c]
+            texto = formatos[c].format(valor) if c in formatos else str(valor)
+            # &#36; evita que Streamlit interprete el signo $ como fórmula LaTeX
+            texto = escape(texto).replace("$", "&#36;")
+            clase = "num" if c in formatos else ""
+            celdas += f'<td class="{clase}">{texto}</td>'
+        filas += f"<tr>{celdas}</tr>"
+    st.markdown(
+        '<div class="tabla-wrap"><table class="tabla-mercado">'
+        f"<thead><tr>{encabezado}</tr></thead><tbody>{filas}</tbody>"
+        "</table></div>",
+        unsafe_allow_html=True,
+    )
 
 
 # ---------------------------------------------------------
@@ -779,67 +893,95 @@ elif rol == "Panel Administrador":
                     fig.add_vline(
                         x=demanda,
                         line_dash="dash",
-                        line_color="#0284C7",
+                        line_color="#0369A1",
                         line_width=2.5,
-                        annotation_text=f"Demanda: {demanda} MW",
+                        annotation_text=f"<b>Demanda: {demanda} MW</b>",
                         annotation_position="top left",
-                        annotation_font=dict(size=12, color="#0284C7", family="Arial Black"),
+                        annotation_font=dict(size=12, color="#075985", family="Arial Black"),
+                        annotation_bgcolor="rgba(255,255,255,0.95)",
+                        annotation_bordercolor="#075985",
+                        annotation_borderwidth=1,
+                        annotation_borderpad=3,
                     )
 
                     # Línea de Precio Marginal
                     fig.add_hline(
                         y=precio_marginal,
                         line_dash="dot",
-                        line_color="#D97706",
+                        line_color="#B45309",
                         line_width=2.5,
-                        annotation_text=f"Precio Bolsa: ${precio_marginal:,.2f} COP/kWh",
+                        annotation_text=f"<b>Precio Bolsa: ${precio_marginal:,.2f} COP/kWh</b>",
                         annotation_position="bottom right",
-                        annotation_font=dict(size=12, color="#D97706", family="Arial Black"),
+                        annotation_font=dict(size=12, color="#78350F", family="Arial Black"),
+                        annotation_bgcolor="rgba(255,255,255,0.95)",
+                        annotation_bordercolor="#78350F",
+                        annotation_borderwidth=1,
+                        annotation_borderpad=3,
                     )
 
                     fig.update_layout(
+                        template="plotly_white",
                         title=dict(
                             text=f"<b>Curva de Mérito — {info_proc['nombre']}</b>",
                             font=dict(size=18, color="#1E3A8A"),
                         ),
                         xaxis=dict(
-                            title="<b>Potencia Acumulada (MW)</b>",
+                            title=dict(
+                                text="<b>Potencia Acumulada (MW)</b>",
+                                font=dict(color="#0F172A", size=13),
+                            ),
+                            tickfont=dict(color="#0F172A", size=12),
                             color="#0F172A",
-                            gridcolor="#E2E8F0",
-                            zerolinecolor="#CBD5E1",
+                            gridcolor="#CBD5E1",
+                            zerolinecolor="#64748B",
+                            linecolor="#64748B",
                         ),
                         yaxis=dict(
-                            title="<b>Precio Ofertado (COP/kWh)</b>",
+                            title=dict(
+                                text="<b>Precio Ofertado (COP/kWh)</b>",
+                                font=dict(color="#0F172A", size=13),
+                            ),
+                            tickfont=dict(color="#0F172A", size=12),
                             color="#0F172A",
-                            gridcolor="#E2E8F0",
-                            zerolinecolor="#CBD5E1",
+                            gridcolor="#CBD5E1",
+                            zerolinecolor="#64748B",
+                            linecolor="#64748B",
                         ),
                         paper_bgcolor="#FFFFFF",
                         plot_bgcolor="#F8FAFC",
                         font=dict(color="#0F172A", size=12),
                         legend=dict(
-                            bgcolor="rgba(255,255,255,0.9)",
-                            bordercolor="#CBD5E1",
+                            bgcolor="rgba(255,255,255,0.95)",
+                            bordercolor="#64748B",
                             borderwidth=1,
-                            font=dict(color="#0F172A", size=10),
+                            font=dict(color="#0F172A", size=11),
+                        ),
+                        hoverlabel=dict(
+                            bgcolor="#FFFFFF",
+                            bordercolor="#334155",
+                            font=dict(color="#0F172A", size=12),
+                        ),
+                        modebar=dict(
+                            bgcolor="rgba(255,255,255,0.9)",
+                            color="#334155",
+                            activecolor="#1E3A8A",
                         ),
                         height=540,
                         margin=dict(l=50, r=50, t=60, b=50),
                     )
 
-                    st.plotly_chart(fig, use_container_width=True)
+                    # theme=None: evita que Streamlit sobrescriba los colores
+                    # de la gráfica con su tema (que puede ser oscuro).
+                    st.plotly_chart(fig, use_container_width=True, theme=None)
 
                     st.subheader("🏆 Resultados Financieros de la Ronda Actual")
-                    st.dataframe(
-                        resumen.sort_values(
-                            by="Utilidad_Neta", ascending=False
-                        ).style.format({
+                    mostrar_tabla(
+                        resumen.sort_values(by="Utilidad_Neta", ascending=False),
+                        {
                             "MW_Despachados": "{:,.0f} MW",
                             "Ingresos": "${:,.2f}",
                             "Utilidad_Neta": "${:,.2f}",
-                        }),
-                        hide_index=True,
-                        use_container_width=True,
+                        },
                     )
 
                     csv_data = df.to_csv(index=False).encode("utf-8")
@@ -894,19 +1036,18 @@ elif rol == "Panel Administrador":
             unsafe_allow_html=True,
         )
 
-        st.dataframe(
+        mostrar_tabla(
             df_total[[
                 "grupo",
                 "MW_Totales",
                 "Ingresos_Totales",
                 "Utilidad_Acumulada",
-            ]].style.format({
+            ]],
+            {
                 "MW_Totales": "{:,.0f} MW",
                 "Ingresos_Totales": "${:,.2f}",
                 "Utilidad_Acumulada": "${:,.2f}",
-            }),
-            hide_index=True,
-            use_container_width=True,
+            },
         )
 
         csv_final = df_total.to_csv(index=False).encode("utf-8")
