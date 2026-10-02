@@ -252,6 +252,11 @@ st.markdown(
 )
 
 
+def num(valor):
+    """Formato con miles y hasta 2 decimales, sin ceros sobrantes (40.00 -> 40)."""
+    return f"{float(valor):,.2f}".rstrip("0").rstrip(".")
+
+
 def mostrar_tabla(df, formatos=None):
     """Dibuja una tabla HTML con fondo blanco y texto oscuro (alto contraste)."""
     formatos = formatos or {}
@@ -264,7 +269,13 @@ def mostrar_tabla(df, formatos=None):
         celdas = ""
         for c in df.columns:
             valor = fila[c]
-            texto = formatos[c].format(valor) if c in formatos else str(valor)
+            fmt = formatos.get(c)
+            if callable(fmt):
+                texto = fmt(valor)
+            elif fmt:
+                texto = fmt.format(valor)
+            else:
+                texto = str(valor)
             # &#36; evita que Streamlit interprete el signo $ como fórmula LaTeX
             texto = escape(texto).replace("$", "&#36;")
             clase = "num" if c in formatos else ""
@@ -582,7 +593,7 @@ if rol == "Portal Jugador":
                     icono = ICONOS_FUENTE.get(off["fuente"], "⚡")
                     st.markdown(
                         f"• **{icono} {off['nombre']}** ({off['fuente']}):"
-                        f" **${off['precio_oferta']:,.2f} COP/kWh** — Cap. Disp:"
+                        f" **${num(off['precio_oferta'])} COP/kWh** — Cap. Disp:"
                         f" **{off['cap_disp']:.0f} MW**"
                     )
 
@@ -600,11 +611,11 @@ if rol == "Portal Jugador":
                         f"""
                         <div class="result-card">
                             <h3 style="color:#065F46; margin:0;">📊 Resultados de tu Equipo — {info_ronda['nombre']}</h3>
-                            <p style="margin:8px 0; font-size:1.1em; color:#0F172A;"><b>Precio Marginal de Bolsa:</b> <span style="color:#2563EB; font-weight:bold;">${precio_m:,.2f} COP/kWh</span></p>
+                            <p style="margin:8px 0; font-size:1.1em; color:#0F172A;"><b>Precio Marginal de Bolsa:</b> <span style="color:#2563EB; font-weight:bold;">${num(precio_m)} COP/kWh</span></p>
                             <hr style="border-color:#CBD5E1;">
                             <p style="color:#0F172A;">⚡ <b>Energía Despachada:</b> {mw_desp:,.0f} MW</p>
-                            <p style="color:#0F172A;">💵 <b>Ingresos Totales:</b> ${ingresos:,.2f} COP</p>
-                            <p style="color:#0F172A;">📈 <b>Utilidad Neta Obtenida:</b> <span style="font-size:1.2em; color:#D97706; font-weight:bold;">${utilidad:,.2f} COP</span></p>
+                            <p style="color:#0F172A;">💵 <b>Ingresos Totales:</b> ${num(ingresos)} COP</p>
+                            <p style="color:#0F172A;">📈 <b>Utilidad Neta Obtenida:</b> <span style="font-size:1.2em; color:#D97706; font-weight:bold;">${num(utilidad)} COP</span></p>
                         </div>
                         """,
                         unsafe_allow_html=True,
@@ -642,7 +653,7 @@ if rol == "Portal Jugador":
                     <div style="background-color: {estilo['bg']}; border-left: 6px solid {estilo['border']}; padding: 14px; border-radius: 8px; margin-bottom: 12px;">
                         <h4 style="margin:0; color: {estilo['text']};">{icono} {p['nombre']} — <span style="font-size: 0.85em;">{estilo['badge']}</span></h4>
                         <p style="margin:4px 0 0 0; color: #1E293B; font-size:0.95em;">
-                            Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${p['costo']:,.2f} COP/kWh</b>
+                            Fuente: <b>{p['fuente']}</b> | Capacidad Disp.: <b>{cap_disp:.0f} MW</b> | Costo Base: <b>${num(p['costo'])} COP/kWh</b>
                         </p>
                     </div>
                     """,
@@ -655,6 +666,7 @@ if rol == "Portal Jugador":
                     max_value=2000.0,
                     value=float(p["costo"]),
                     step=5.0,
+                    format="%g",
                     key=f"inp_{grupo_sel}_r{ronda_act}_{p['id']}",
                 )
 
@@ -831,7 +843,7 @@ elif rol == "Panel Administrador":
 
                     st.markdown(
                         "### 💰 Precio Marginal de Bolsa:"
-                        f" **${precio_marginal:,.2f} COP/kWh**"
+                        f" **${num(precio_marginal)} COP/kWh**"
                     )
 
                     # ---------------------------------------------------------
@@ -881,7 +893,7 @@ elif rol == "Panel Administrador":
                                     f"<b>{icono} {row['nombre']}</b><br>"
                                     f"Equipo: <b>{row['grupo']}</b><br>"
                                     f"Estado: <b>{estado_desc}</b><br>"
-                                    f"Oferta: <b>${row['precio_oferta']:,.2f} COP/kWh</b><br>"
+                                    f"Oferta: <b>${num(row['precio_oferta'])} COP/kWh</b><br>"
                                     f"Despachado: <b>{row['despachado_mw']:.0f} / {row['cap_disp']:.0f} MW</b>"
                                 ),
                                 hoverinfo="text",
@@ -910,7 +922,7 @@ elif rol == "Panel Administrador":
                         line_dash="dot",
                         line_color="#B45309",
                         line_width=2.5,
-                        annotation_text=f"<b>Precio Bolsa: ${precio_marginal:,.2f} COP/kWh</b>",
+                        annotation_text=f"<b>Precio Bolsa: ${num(precio_marginal)} COP/kWh</b>",
                         annotation_position="bottom right",
                         annotation_font=dict(size=12, color="#78350F", family="Arial Black"),
                         annotation_bgcolor="rgba(255,255,255,0.95)",
@@ -979,8 +991,8 @@ elif rol == "Panel Administrador":
                         resumen.sort_values(by="Utilidad_Neta", ascending=False),
                         {
                             "MW_Despachados": "{:,.0f} MW",
-                            "Ingresos": "${:,.2f}",
-                            "Utilidad_Neta": "${:,.2f}",
+                            "Ingresos": lambda v: "$" + num(v),
+                            "Utilidad_Neta": lambda v: "$" + num(v),
                         },
                     )
 
@@ -1030,7 +1042,7 @@ elif rol == "Panel Administrador":
             <div class="winner-card">
                 <h1 style="color: #78350F; margin:0;">🥇 ¡GRAN CAMPEÓN DEL MERCADO! 🥇</h1>
                 <h2 style="color: #1E3A8A; margin: 10px 0;">{ganador['grupo']}</h2>
-                <h3 style="color: #047857; margin:0;">Utilidad Acumulada: ${ganador['Utilidad_Acumulada']:,.2f} COP</h3>
+                <h3 style="color: #047857; margin:0;">Utilidad Acumulada: ${num(ganador['Utilidad_Acumulada'])} COP</h3>
             </div>
             """,
             unsafe_allow_html=True,
@@ -1045,8 +1057,8 @@ elif rol == "Panel Administrador":
             ]],
             {
                 "MW_Totales": "{:,.0f} MW",
-                "Ingresos_Totales": "${:,.2f}",
-                "Utilidad_Acumulada": "${:,.2f}",
+                "Ingresos_Totales": lambda v: "$" + num(v),
+                "Utilidad_Acumulada": lambda v: "$" + num(v),
             },
         )
 
